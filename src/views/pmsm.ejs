@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>PMS - Vista para Minitab</title>
+
+    <style>
+        body { font-family: Arial; padding:20px; background:#f5f5f5; }
+        table {
+            width:100%;
+            border-collapse: collapse;
+            font-size:12px;
+            background:white;
+        }
+        th, td {
+            border:1px solid #ccc;
+            padding:5px;
+            text-align:center;
+        }
+        th {
+            background:#333;
+            color:white;
+            position: sticky;
+            top: 0;
+        }
+        input, button {
+            padding:8px;
+            margin:5px;
+        }
+        button {
+            background:#007BFF;
+            color:white;
+            border:none;
+            cursor:pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Datos PMS (Formato Minitab)</h1>
+
+<!-- Filtro -->
+<form method="GET" action="/pmsm">
+    <label>Número de Parte:</label>
+    <input type="text" name="numeroParte" value="<%= numeroParte || '' %>">
+    <button type="submit">Filtrar</button>
+</form>
+
+<button onclick="copiar()">📋 Copiar para Minitab</button>
+
+<%
+const campos = [
+    'numeroParte','maquina','timestamp',
+    'P001','P002','P003','P004','P005','P006','P007','P010','P011',
+    'P015','P016','P017','P018','P019','P020','P021','P022','P023','P024',
+    'P026','P027','P028','P029','P032','P033','P034','P035','P036','P037','P038','P039',
+    'P040','P041','P042','P043','P044','P045',
+    'P046','P047','P048','P049','P050','P051',
+    'P061','P062','P063','P064','P065','P066',
+    'P071','P072','P073','P074','P075','P076','P077','P078','P079',
+    'P080','P081','P082','P083','P084','P085','P086','P087','P088',
+    'P089','P090','P091','P092','P093','P094','P095','P096','P097',
+    'P098','P099','P100','P101','P102','P103','P104','P105','P106','P107',
+    'P110','P111','P112','P113','P114'
+];
+%>
+
+<!-- TABLA -->
+<table>
+    <thead>
+        <tr>
+            <% campos.forEach(c => { %>
+                <th><%= c %></th>
+            <% }) %>
+        </tr>
+    </thead>
+    <tbody>
+        <% registros.forEach(r => { %>
+            <tr>
+                <% campos.forEach(c => { %>
+                    <td>
+                        <% if (c === 'timestamp') { %>
+                            <%= r[c] ? new Date(r[c]).toLocaleString() : '' %>
+                        <% } else { %>
+                            <%= r[c] ?? '' %>
+                        <% } %>
+                    </td>
+                <% }) %>
+            </tr>
+        <% }) %>
+    </tbody>
+</table>
+
+<script>
+function copiar() {
+    const campos = <%- JSON.stringify(campos) %>;
+    const registros = <%- JSON.stringify(registros) %>;
+
+    let texto = campos.join("\\t") + "\\n";
+
+    registros.forEach(r => {
+        let fila = campos.map(c => {
+            if (c === 'timestamp') {
+                return r[c] ? new Date(r[c]).toISOString() : '';
+            }
+            return r[c] ?? '';
+        }).join("\\t");
+
+        texto += fila + "\\n";
+    });
+
+    navigator.clipboard.writeText(texto);
+    alert("Copiado para Minitab ✔");
+}
+</script>
+
+</body>
+</html>

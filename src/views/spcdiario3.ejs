@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>SPC Diario - I-MR</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: #e5e7eb;
+  margin: 0;
+}
+
+.header {
+  padding: 15px;
+  background: #020617;
+  border-bottom: 2px solid #38bdf8;
+  text-align: center;
+}
+
+.controls {
+  padding: 10px;
+  background: #111827;
+  text-align: center;
+}
+
+select, button {
+  padding: 6px;
+  margin: 5px;
+  background: #020617;
+  color: #e5e7eb;
+  border: 1px solid #38bdf8;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 50vh 50vh;
+  gap: 10px;
+  padding: 10px;
+}
+
+.card {
+  background: #020617;
+  border: 1px solid #38bdf8;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card h3 {
+  text-align: center;
+  color: #38bdf8;
+}
+
+.canvas-container {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.table-container {
+  overflow: auto;
+  flex: 1;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th, td {
+  border: 1px solid #374151;
+  padding: 4px;
+  text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>📊 SPC Diario - I-MR</h2>
+</div>
+
+<div class="controls">
+  <label>Parte:</label>
+  <select id="numeroParte"></select>
+
+  <label>Característica:</label>
+  <select id="caracteristica">
+    <option value="peso">Peso</option>
+    <option value="r_pequena">r_pequena</option>
+
+    <% for(let i=1;i<=10;i++){ %>
+      <option value="p<%=i%>.peak">p<%=i%>.peak</option>
+      <option value="p<%=i%>.root">p<%=i%>.root</option>
+    <% } %>
+
+    <option value="grandeD1">grandeD1</option>
+    <option value="grandeD2">grandeD2</option>
+  </select>
+
+  <button id="btnGenerar">Generar</button>
+</div>
+
+<div class="grid">
+
+  <div class="card">
+    <h3>Datos</h3>
+    <div class="table-container">
+      <table id="tablaDatos">
+        <thead>
+          <tr><th>#</th><th>Valor</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Histograma</h3>
+    <div class="canvas-container">
+      <canvas id="histogramaChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Individual (I)</h3>
+    <div class="canvas-container">
+      <canvas id="iChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Moving Range (MR)</h3>
+    <div class="canvas-container">
+      <canvas id="mrChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const datos = <%- JSON.stringify(datos) %>;
+
+// 🔹 FILTRAR PARTES CON DATOS
+function obtenerPartesValidas(){
+  const partesSet = new Set();
+
+  datos.forEach(d=>{
+    if(d.numeroParte){
+      partesSet.add(d.numeroParte);
+    }
+  });
+
+  return [...partesSet];
+}
+
+// 🔹 LLENAR SELECT
+function cargarPartes(){
+  const select = document.getElementById("numeroParte");
+  select.innerHTML = "";
+
+  obtenerPartesValidas().forEach(p=>{
+    select.innerHTML += `<option value="${p}">${p}</option>`;
+  });
+}
+
+function getValores(d, campo){
+
+  if(campo === "peso"){
+    return (d.peso != null) ? [d.peso] : [];
+  }
+
+  let val = null;
+
+  if(campo === "r_pequena"){
+    val = d.mediciones?.r_pequena;
+  }
+  else if(campo === "grandeD1" || campo === "grandeD2"){
+    val = d.mediciones?.[campo];
+  }
+  else if(campo.includes("p")){
+    let [punto, tipo] = campo.split(".");
+    val = d.mediciones?.puntos?.[punto]?.[tipo];
+  }
+
+  if(!val) return [];
+
+  return [val.A, val.B, val.C].filter(v => v != null);
+}
+
+function procesar(){
+
+  const parte = document.getElementById("numeroParte").value;
+  const campo = document.getElementById("caracteristica").value;
+
+  let valores = [];
+
+  datos
+    .filter(d => d.numeroParte === parte)
+    .forEach(d => valores.push(...getValores(d, campo)));
+
+  valores = valores.filter(v => !isNaN(v));
+
+  if(valores.length < 2){
+    alert("No hay datos suficientes");
+    return;
+  }
+
+  // TABLA
+  let tbody = document.querySelector("#tablaDatos tbody");
+  tbody.innerHTML = "";
+  valores.forEach((v,i)=>{
+    tbody.innerHTML += `<tr><td>${i+1}</td><td>${v}</td></tr>`;
+  });
+
+  // MR
+  let mr = [];
+  for(let i=1;i<valores.length;i++){
+    mr.push(Math.abs(valores[i]-valores[i-1]));
+  }
+
+  // HISTOGRAMA MEJORADO
+  let bins = 10;
+  let min = Math.min(...valores);
+  let max = Math.max(...valores);
+  let width = (max-min)/bins;
+
+  let hist = new Array(bins).fill(0);
+  let labels = [];
+
+  for(let i=0;i<bins;i++){
+    let start = min + i*width;
+    let end = start + width;
+    labels.push(`${start.toFixed(3)} - ${end.toFixed(3)}`);
+  }
+
+  valores.forEach(v=>{
+    let idx = Math.min(Math.floor((v-min)/width), bins-1);
+    hist[idx]++;
+  });
+
+  // destruir
+  if(window.iChartObj) iChartObj.destroy();
+  if(window.mrChartObj) mrChartObj.destroy();
+  if(window.histChartObj) histChartObj.destroy();
+
+  const ctx1 = document.getElementById("iChart").getContext("2d");
+  const ctx2 = document.getElementById("mrChart").getContext("2d");
+  const ctx3 = document.getElementById("histogramaChart").getContext("2d");
+
+  // I chart
+  window.iChartObj = new Chart(ctx1,{
+    type:'line',
+    data:{
+      labels:valores.map((_,i)=>i+1),
+      datasets:[{data:valores,borderColor:'#22c55e'}]
+    },
+    options: chartOptions()
+  });
+
+  // MR chart
+  window.mrChartObj = new Chart(ctx2,{
+    type:'line',
+    data:{
+      labels:mr.map((_,i)=>i+1),
+      datasets:[{data:mr,borderColor:'#ef4444'}]
+    },
+    options: chartOptions()
+  });
+
+  // HIST
+  window.histChartObj = new Chart(ctx3,{
+    type:'bar',
+    data:{
+      labels:labels,
+      datasets:[{data:hist,backgroundColor:'#38bdf8'}]
+    },
+    options: chartOptions()
+  });
+}
+
+function chartOptions(){
+  return {
+    responsive:true,
+    maintainAspectRatio:false,
+    layout:{padding:10},
+    plugins:{
+      legend:{labels:{color:'#e5e7eb'}}
+    },
+    scales:{
+      x:{ticks:{color:'#e5e7eb', maxRotation:90}, grid:{color:'#374151'}},
+      y:{ticks:{color:'#e5e7eb'}, grid:{color:'#374151'}}
+    }
+  };
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  cargarPartes();
+  document.getElementById("btnGenerar").addEventListener("click",procesar);
+});
+</script>
+
+</body>
+</html>

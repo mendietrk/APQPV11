@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Exportar a Minitab</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      margin-bottom: 15px;
+    }
+
+    select, button {
+      padding: 8px;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 500px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Exportar datos a Minitab</h2>
+
+<div class="controls">
+
+  <!-- Selector de número de parte -->
+  <form method="GET" action="/minitab" style="display:inline;">
+    <label for="numeroParte">Número de Parte:</label>
+
+    <select name="numeroParte" id="numeroParte" onchange="this.form.submit()">
+      <option value="">-- Todas --</option>
+
+      <% partes.forEach(p => { %>
+        <option value="<%= p %>" 
+          <%= numeroParteSeleccionado === p ? 'selected' : '' %>>
+          <%= p %>
+        </option>
+      <% }) %>
+
+    </select>
+  </form>
+
+  <!-- Botón copiar -->
+  <button onclick="copiar()">📋 Copiar todo</button>
+
+</div>
+
+<textarea id="output"><%= contenido %></textarea>
+
+<script>
+function copiar() {
+  const textarea = document.getElementById("output");
+  textarea.select();
+  document.execCommand("copy");
+  alert("Datos copiados. Puedes pegarlos en Minitab.");
+}
+</script>
+
+</body>
+</html>

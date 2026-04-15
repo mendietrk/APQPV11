@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Editar SPC</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    .grupo {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+    }
+
+    .fila {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+
+    input {
+      width: 80px;
+      padding: 4px;
+    }
+
+    label {
+      width: 120px;
+      display: inline-block;
+    }
+
+    button {
+      padding: 10px 15px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Editar Medición SPC</h2>
+
+<form method="POST">
+
+  <!-- Datos generales -->
+  <div class="grupo">
+    <h3>Datos Generales</h3>
+
+    <div class="fila">
+      <label>Número Parte:</label>
+      <input name="numeroParte" value="<%= medicion.numeroParte %>">
+    </div>
+
+    <div class="fila">
+      <label>Peso:</label>
+      <input name="peso" type="number" step="any" value="<%= medicion.peso %>">
+    </div>
+  </div>
+
+  <!-- r_pequena -->
+  <div class="grupo">
+    <h3>r_pequeña</h3>
+    <div class="fila">
+      <input name="mediciones[r_pequena][A]" value="<%= medicion.mediciones?.r_pequena?.A || '' %>" placeholder="A">
+      <input name="mediciones[r_pequena][B]" value="<%= medicion.mediciones?.r_pequena?.B || '' %>" placeholder="B">
+      <input name="mediciones[r_pequena][C]" value="<%= medicion.mediciones?.r_pequena?.C || '' %>" placeholder="C">
+    </div>
+  </div>
+
+  <!-- PUNTOS -->
+  <div class="grupo">
+    <h3>Puntos</h3>
+
+    <% const puntos = ['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p4_2']; %>
+
+    <% puntos.forEach(p => { %>
+      <div class="grupo">
+        <strong><%= p %></strong>
+
+        <div class="fila">
+          <label>Peak:</label>
+          <input name="mediciones[puntos][<%= p %>][peak][A]" value="<%= medicion.mediciones?.puntos?.[p]?.peak?.A || '' %>" placeholder="A">
+          <input name="mediciones[puntos][<%= p %>][peak][B]" value="<%= medicion.mediciones?.puntos?.[p]?.peak?.B || '' %>" placeholder="B">
+          <input name="mediciones[puntos][<%= p %>][peak][C]" value="<%= medicion.mediciones?.puntos?.[p]?.peak?.C || '' %>" placeholder="C">
+        </div>
+
+        <div class="fila">
+          <label>Root:</label>
+          <input name="mediciones[puntos][<%= p %>][root][A]" value="<%= medicion.mediciones?.puntos?.[p]?.root?.A || '' %>" placeholder="A">
+          <input name="mediciones[puntos][<%= p %>][root][B]" value="<%= medicion.mediciones?.puntos?.[p]?.root?.B || '' %>" placeholder="B">
+          <input name="mediciones[puntos][<%= p %>][root][C]" value="<%= medicion.mediciones?.puntos?.[p]?.root?.C || '' %>" placeholder="C">
+        </div>
+      </div>
+    <% }) %>
+
+  </div>
+
+  <!-- GRANDES -->
+  <div class="grupo">
+    <h3>Grandes</h3>
+
+    <% ['grandeD1','grandeD2'].forEach(g => { %>
+      <div class="fila">
+        <label><%= g %>:</label>
+        <input name="mediciones[<%= g %>][A]" value="<%= medicion.mediciones?.[g]?.A || '' %>" placeholder="A">
+        <input name="mediciones[<%= g %>][B]" value="<%= medicion.mediciones?.[g]?.B || '' %>" placeholder="B">
+        <input name="mediciones[<%= g %>][C]" value="<%= medicion.mediciones?.[g]?.C || '' %>" placeholder="C">
+      </div>
+    <% }) %>
+
+  </div>
+
+  <button type="submit">💾 Guardar Cambios</button>
+
+</form>
+
+</body>
+</html>

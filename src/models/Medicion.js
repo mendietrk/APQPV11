@@ -1,0 +1,52 @@
+const mongoose = require('mongoose');
+
+const tripleSchema = new mongoose.Schema({
+  A: Number,
+  B: Number,
+  C: Number
+}, { _id: false });
+
+const puntoSchema = new mongoose.Schema({
+  peak: tripleSchema,
+  root: tripleSchema
+}, { _id: false });
+
+const medicionSchema = new mongoose.Schema({
+  numeroParte: {
+    type: String,
+    required: true
+  },
+
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+
+  peso: Number,
+
+  mediciones: {
+    r_pequena: tripleSchema,
+
+    puntos: {
+      p1: puntoSchema,
+      p2: puntoSchema,
+      p3: puntoSchema,
+      p4: puntoSchema,
+      p5: puntoSchema,
+      p6: puntoSchema,
+      p7: puntoSchema,
+      p8: puntoSchema,
+      p9: puntoSchema,
+      p10: puntoSchema,
+      p4_2: puntoSchema
+    },
+
+    grandeD1: tripleSchema,
+    grandeD2: tripleSchema
+  }
+
+}, {
+  timestamps: true // opcional (createdAt, updatedAt)
+});
+
+module.exports = mongoose.model('Medicion', medicionSchema);

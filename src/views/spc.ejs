@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPC</title>
+
+<style>
+  body {
+    font-family: Arial;
+    background-color: #121212;
+    color: #fff;
+    text-align: center;
+  }
+
+  h1, h2, h3 {
+    color: #00e5ff;
+  }
+
+  .section {
+    display: none;
+    padding: 20px;
+  }
+
+  .active {
+    display: block;
+  }
+
+  input, select {
+    width: 85%;
+    padding: 14px;
+    margin: 8px;
+    font-size: 1.2rem;
+    text-align: center;
+    background: #1e1e1e;
+    color: white;
+    border: 2px solid #00e5ff;
+    border-radius: 8px;
+  }
+
+  button {
+    padding: 14px 20px;
+    margin: 10px;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .btn-nav {
+    background: #333;
+    color: white;
+  }
+
+  .btn-nav:hover {
+    background: #555;
+  }
+
+  .success {
+    color: #00e676;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>Captura SPC</h1>
+
+<% if (typeof ok !== 'undefined' && ok) { %>
+  <p class="success">✔ Datos guardados</p>
+<% } %>
+
+<form id="spcForm" action="/subgrupo/nuevo" method="POST">
+
+<!-- Datos -->
+<div class="section active">
+  <h2>Datos Generales</h2>
+
+  <select name="numeroParte">
+    <option value="">Seleccionar parte</option>
+    <% partes.forEach(p => { %>
+      <option value="<%= p.pa6 %>"><%= p.pa6 %></option>
+    <% }) %>
+  </select>
+
+  <input type="text" inputmode="decimal" name="peso" placeholder="Peso">
+</div>
+
+<!-- Caliper -->
+<div class="section">
+  <h2>Caliper r pequeña</h2>
+  <% ['A','B','C'].forEach(l => { %>
+    <input type="text" inputmode="decimal" name="caliper_r_pequena_<%= l %>" placeholder="<%= l %>">
+  <% }) %>
+</div>
+
+<!-- r -->
+<div class="section">
+  <h2>r pequeña</h2>
+  <% ['A','B','C'].forEach(l => { %>
+    <input type="text" inputmode="decimal" name="r_pequena_<%= l %>" placeholder="<%= l %>">
+  <% }) %>
+</div>
+
+<!-- Puntos -->
+<% for(let i = 1; i <= 10; i++) { %>
+<div class="section">
+  <h2>Punto <%= i %></h2>
+
+  <h3>Peak</h3>
+  <% ['A','B','C'].forEach(l => { %>
+    <input type="text" inputmode="decimal" name="p<%= i %>_peak_<%= l %>" placeholder="Peak <%= l %>">
+  <% }) %>
+
+  <h3>Root</h3>
+  <% ['A','B','C'].forEach(l => { %>
+    <input type="text" inputmode="decimal" name="p<%= i %>_root_<%= l %>" placeholder="Root <%= l %>">
+  <% }) %>
+</div>
+<% } %>
+
+<!-- 4.2 -->
+<div class="section">
+  <h2>Punto 4.2</h2>
+
+  <% ['A','B','C'].forEach(l => { %>
+    <input type="text" inputmode="decimal" name="p4_2_peak_<%= l %>" placeholder="Peak <%= l %>">
+    <input type="text" inputmode="decimal" name="p4_2_root_<%= l %>" placeholder="Root <%= l %>">
+  <% }) %>
+</div>
+
+<!-- D1 -->
+<div class="section">
+  <h2>Grande D1</h2>
+  <% ['A','B','C'].forEach(l => { %>
+    <input type="text" inputmode="decimal" name="grandeD1_<%= l %>" placeholder="<%= l %>">
+  <% }) %>
+</div>
+
+<!-- D2 -->
+<div class="section">
+  <h2>Grande D2</h2>
+  <% ['A','B','C'].forEach(l => { %>
+    <input type="text" inputmode="decimal" name="grandeD2_<%= l %>" placeholder="<%= l %>">
+  <% }) %>
+</div>
+
+<!-- NAV -->
+<div>
+  <button type="button" class="btn-nav" onclick="prev()">⬅ Anterior</button>
+  <button type="button" class="btn-nav" onclick="next()">Siguiente ➡</button>
+</div>
+
+<button type="submit" class="btn-nav">Guardar</button>
+
+</form>
+
+<script>
+let current = 0;
+const sections = document.querySelectorAll(".section");
+
+function show(i) {
+  sections.forEach(s => s.classList.remove("active"));
+  sections[i].classList.add("active");
+
+  const first = sections[i].querySelector("input, select");
+  if (first) first.focus();
+}
+
+function next() {
+  if (current < sections.length - 1) {
+    current++;
+    show(current);
+  }
+}
+
+function prev() {
+  if (current > 0) {
+    current--;
+    show(current);
+  }
+}
+
+// ENTER = avanzar (NO guardar)
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+
+    const inputs = sections[current].querySelectorAll("input, select");
+    const active = document.activeElement;
+    const index = Array.from(inputs).indexOf(active);
+
+    if (index < inputs.length - 1) {
+      inputs[index + 1].focus();
+    } else {
+      next();
+    }
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>SPC Diario - Sixpack</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f0f2f5;
+  margin: 0;
+}
+
+.header {
+  padding: 15px;
+  background: #1f2937;
+  color: white;
+}
+
+.controls {
+  padding: 10px;
+  background: #e5e7eb;
+}
+
+select, button {
+  padding: 6px;
+  margin-right: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 50vh 50vh;
+  gap: 10px;
+  padding: 10px;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card h3 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+}
+
+canvas {
+  flex: 1;
+}
+
+/* tabla */
+.table-container {
+  overflow: auto;
+  flex: 1;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 4px;
+  text-align: center;
+}
+
+.copy-btn {
+  margin-bottom: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>📊 SPC Diario - Sixpack</h2>
+</div>
+
+<div class="controls">
+  <label>Parte:</label>
+  <select id="numeroParte">
+    <% partes.forEach(p => { %>
+      <option value="<%= p %>"><%= p %></option>
+    <% }) %>
+  </select>
+
+  <label>Característica:</label>
+  <select id="caracteristica">
+    <option value="peso">Peso</option>
+    <option value="r_pequena.A">r_pequena.A</option>
+    <option value="r_pequena.B">r_pequena.B</option>
+    <option value="r_pequena.C">r_pequena.C</option>
+
+    <% for(let i=1;i<=10;i++){ %>
+      <option value="p<%=i%>.peak.A">p<%=i%>.peak.A</option>
+      <option value="p<%=i%>.peak.B">p<%=i%>.peak.B</option>
+      <option value="p<%=i%>.peak.C">p<%=i%>.peak.C</option>
+    <% } %>
+  </select>
+
+  <button onclick="procesar()">Generar</button>
+</div>
+
+<div class="grid">
+
+  <!-- 🟦 Tabla -->
+  <div class="card">
+    <h3>Datos</h3>
+    <button class="copy-btn" onclick="copiarTabla()">Copiar</button>
+
+    <div class="table-container">
+      <table id="tablaDatos">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 🟩 Histograma -->
+  <div class="card">
+    <h3>Histograma</h3>
+    <canvas id="histogramaChart"></canvas>
+  </div>
+
+  <!-- 🟨 Medias -->
+  <div class="card">
+    <h3>Gráfica de Medias (X̄)</h3>
+    <canvas id="mediaChart"></canvas>
+  </div>
+
+  <!-- 🟥 Rangos -->
+  <div class="card">
+    <h3>Gráfica de Rangos (R)</h3>
+    <canvas id="rangoChart"></canvas>
+  </div>
+
+</div>
+
+<script>
+const datos = <%- JSON.stringify(datos) %>;
+
+function getValor(obj, path) {
+  return path.split('.').reduce((o, key) => o && o[key], obj);
+}
+
+function agrupar(data, n=5){
+  let grupos=[];
+  for(let i=0;i<data.length;i+=n){
+    grupos.push(data.slice(i,i+n));
+  }
+  return grupos;
+}
+
+function calc(grupos, campo){
+  let medias=[], rangos=[];
+
+  grupos.forEach(g=>{
+    let vals = g.map(d=>{
+      return campo==="peso" ? d.peso : getValor(d.mediciones,campo);
+    }).filter(v=>v!=null);
+
+    if(vals.length){
+      let mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+      let range = Math.max(...vals)-Math.min(...vals);
+      medias.push(mean);
+      rangos.push(range);
+    }
+  });
+
+  return {medias,rangos};
+}
+
+function histograma(valores, bins=10){
+  let min=Math.min(...valores);
+  let max=Math.max(...valores);
+  let w=(max-min)/bins;
+
+  let h=new Array(bins).fill(0);
+
+  valores.forEach(v=>{
+    let i=Math.min(Math.floor((v-min)/w),bins-1);
+    h[i]++;
+  });
+
+  return {
+    labels:h.map((_,i)=>(min+i*w).toFixed(2)),
+    data:h
+  };
+}
+
+let mediaChart, rangoChart, histChart;
+
+function procesar(){
+  const parte=document.getElementById("numeroParte").value;
+  const campo=document.getElementById("caracteristica").value;
+
+  let filtrados=datos.filter(d=>d.numeroParte===parte);
+
+  let valores=filtrados.map(d=>{
+    return campo==="peso" ? d.peso : getValor(d.mediciones,campo);
+  }).filter(v=>v!=null);
+
+  // 🟦 llenar tabla
+  let tbody=document.querySelector("#tablaDatos tbody");
+  tbody.innerHTML="";
+  valores.forEach((v,i)=>{
+    tbody.innerHTML+=`<tr><td>${i+1}</td><td>${v}</td></tr>`;
+  });
+
+  let grupos=agrupar(filtrados,5);
+  let {medias,rangos}=calc(grupos,campo);
+  let hist=histograma(valores);
+
+  if(mediaChart) mediaChart.destroy();
+  if(rangoChart) rangoChart.destroy();
+  if(histChart) histChart.destroy();
+
+  mediaChart=new Chart(document.getElementById("mediaChart"),{
+    type:'line',
+    data:{
+      labels:medias.map((_,i)=>i+1),
+      datasets:[{label:'X̄',data:medias,borderWidth:2}]
+    }
+  });
+
+  rangoChart=new Chart(document.getElementById("rangoChart"),{
+    type:'line',
+    data:{
+      labels:rangos.map((_,i)=>i+1),
+      datasets:[{label:'R',data:rangos,borderWidth:2}]
+    }
+  });
+
+  histChart=new Chart(document.getElementById("histogramaChart"),{
+    type:'bar',
+    data:{
+      labels:hist.labels,
+      datasets:[{label:'Frecuencia',data:hist.data}]
+    }
+  });
+}
+
+function copiarTabla(){
+  let text="";
+  document.querySelectorAll("#tablaDatos tr").forEach(row=>{
+    let cols=row.querySelectorAll("td,th");
+    let rowText=[...cols].map(c=>c.innerText).join("\t");
+    text+=rowText+"\n";
+  });
+
+  navigator.clipboard.writeText(text);
+  alert("Datos copiados");
+}
+</script>
+
+</body>
+</html>

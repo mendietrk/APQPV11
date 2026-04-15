@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar PMS</title>
+
+    <style>
+        body { font-family: Arial; background:#f5f5f5; padding:20px; }
+        h2 { background:#333; color:white; padding:10px; }
+        .section { background:white; padding:15px; margin-bottom:20px; border-radius:8px; }
+        .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+        label { font-size:12px; font-weight:bold; }
+        input { width:100%; padding:6px; }
+        button { padding:10px 20px; background:#28a745; color:white; border:none; cursor:pointer; }
+    </style>
+</head>
+<body>
+
+<h1>Editar Registro PMS</h1>
+
+<form method="POST" action="/pms/edit/<%= registro._id %>">
+
+    <!-- Información General -->
+    <div class="section">
+        <h2>Información General</h2>
+        <div class="grid">
+            <div>
+                <label>Número de parte</label>
+                <input name="numeroParte" type="text" value="<%= registro.numeroParte %>">
+            </div>
+            <div>
+                <label>Máquina</label>
+                <input name="maquina" type="text" value="<%= registro.maquina %>">
+            </div>
+        </div>
+    </div>
+
+    <!-- Timestamp -->
+    <div class="section">
+        <h2>Registro</h2>
+        <label>Fecha original</label>
+        <input type="text" value="<%= new Date(registro.timestamp).toLocaleString() %>" readonly>
+        <input type="hidden" name="timestamp" value="<%= registro.timestamp %>">
+    </div>
+
+    <!-- Parámetros Generales -->
+    <div class="section">
+        <h2>Parámetros Generales</h2>
+        <div class="grid">
+            <% ['P001','P002','P003','P004','P005','P006','P007','P010','P011'].forEach(p => { %>
+                <div>
+                    <label><%= p %></label>
+                    <input name="<%= p %>" type="text" value="<%= registro[p] ?? '' %>">
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Temperaturas -->
+    <div class="section">
+        <h2>Temperaturas</h2>
+        <div class="grid">
+            <% ['P015','P016','P017','P018','P019','P020','P021','P022','P023','P024'].forEach(p => { %>
+                <div>
+                    <label><%= p %></label>
+                    <input name="<%= p %>" type="text" value="<%= registro[p] ?? '' %>">
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Proceso -->
+    <div class="section">
+        <h2>Proceso</h2>
+        <div class="grid">
+            <% [
+                'P026','P027','P028','P029','P032','P033','P034','P035',
+                'P036','P037','P038','P039','P040','P041','P042','P043'
+            ].forEach(p => { %>
+                <div>
+                    <label><%= p %></label>
+                    <input name="<%= p %>" type="text" value="<%= registro[p] ?? '' %>">
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Adicional -->
+    <div class="section">
+        <h2>Información adicional</h2>
+        <div class="grid">
+            <div><label>P044</label><input name="P044" type="text" value="<%= registro.P044 ?? '' %>"></div>
+            <div><label>P045</label><input name="P045" type="text" value="<%= registro.P045 ?? '' %>"></div>
+        </div>
+    </div>
+
+    <!-- Perfiles -->
+    <div class="section">
+        <h2>Perfiles</h2>
+        <div class="grid">
+            <% 
+            const perfiles = [
+                'P046','P047','P048','P049','P050','P051',
+                'P061','P062','P063','P064','P065','P066',
+                'P071','P072','P073','P074','P075','P076','P077','P078','P079',
+                'P080','P081','P082','P083','P084','P085','P086','P087','P088',
+                'P089','P090','P091','P092','P093','P094','P095','P096','P097',
+                'P098','P099','P100','P101','P102','P103','P104','P105','P106','P107'
+            ];
+            %>
+
+            <% perfiles.forEach(p => { %>
+                <div>
+                    <label><%= p %></label>
+                    <input name="<%= p %>" type="text" value="<%= registro[p] ?? '' %>">
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Final -->
+    <div class="section">
+        <h2>Final</h2>
+        <div class="grid">
+            <% ['P110','P111','P112','P113','P114'].forEach(p => { %>
+                <div>
+                    <label><%= p %></label>
+                    <input name="<%= p %>" type="text" value="<%= registro[p] ?? '' %>">
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <button type="submit">Actualizar</button>
+
+</form>
+
+<script>
+    // ENTER = siguiente campo
+    const inputs = Array.from(document.querySelectorAll("input[type='text']"));
+
+    inputs.forEach((input, index) => {
+        input.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+
+                const next = inputs[index + 1];
+                if (next) {
+                    next.focus();
+                    next.select();
+                }
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

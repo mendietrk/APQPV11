@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro de Parámetros</title>
+    <style>
+        body { font-family: Arial; background:#f5f5f5; padding:20px; }
+        h2 { background:#333; color:white; padding:10px; }
+        .section { background:white; padding:15px; margin-bottom:20px; border-radius:8px; }
+        .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+        label { font-size:12px; font-weight:bold; }
+        input { width:100%; padding:5px; }
+        button { padding:10px 20px; background:#007BFF; color:white; border:none; cursor:pointer; }
+    </style>
+</head>
+<body>
+
+<h1>Formulario de Parámetros de Proceso</h1>
+
+<form method="POST" action="/save-parameters">
+
+    <!-- Datos iniciales -->
+    <div class="section">
+        <h2>Información General</h2>
+        <div class="grid">
+            <div><label>Número de parte</label><input name="numeroParte" type="text" required></div>
+            <div><label>Máquina</label><input name="maquina" type="text" required></div>
+        </div>
+    </div>
+
+    <!-- Fecha y hora -->
+    <div class="section">
+        <h2>Registro</h2>
+        <label>Fecha y Hora</label>
+        <input type="text" id="fechaHoraVisible" readonly>
+        <input type="hidden" name="timestamp" id="timestamp">
+    </div>
+
+    <!-- Parámetros Generales -->
+    <div class="section">
+        <h2>Parámetros Generales</h2>
+        <div class="grid">
+            <div><label>P001 Temperatura de secado</label><input name="P001" type="number" step="any"></div>
+            <div><label>P002 Humedad del material</label><input name="P002" type="number" step="any"></div>
+            <div><label>P003 Average ejection pressure</label><input name="P003" type="number" step="any"></div>
+            <div><label>P004 Gripper pressure</label><input name="P004" type="number" step="any"></div>
+            <div><label>P005 Blowing pressure</label><input name="P005" type="number" step="any"></div>
+            <div><label>P006 Support air</label><input name="P006" type="number" step="any"></div>
+            <div><label>P007 constant screw speed</label><input name="P007" type="number" step="any"></div>
+            <div><label>P010 Peso de la pieza</label><input name="P010" type="number" step="any"></div>
+            <div><label>P011 Atributos de la pieza</label><input name="P011" type="text"></div>
+        </div>
+    </div>
+
+    <!-- Temperaturas -->
+    <div class="section">
+        <h2>Temperaturas</h2>
+        <div class="grid">
+            <% const temps = ['P015','P016','P017','P018','P019','P020','P021','P022','P023','P024']; %>
+            <% temps.forEach(p => { %>
+                <div>
+                    <label><%= p %></label>
+                    <input name="<%= p %>" type="number" step="any">
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Proceso -->
+    <div class="section">
+        <h2>Parámetros de Proceso</h2>
+        <div class="grid">
+            <% const proceso = [
+                'P026','P027','P028','P029','P032','P033','P034','P035',
+                'P036','P037','P038','P039','P040','P041','P042','P043'
+            ]; %>
+            <% proceso.forEach(p => { %>
+                <div>
+                    <label><%= p %></label>
+                    <input name="<%= p %>" type="number" step="any">
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Datos adicionales -->
+    <div class="section">
+        <h2>Información adicional</h2>
+        <div class="grid">
+            <div><label>P044 Fechador</label><input name="P044" type="text"></div>
+            <div><label>P045 Material</label><input name="P045" type="text"></div>
+        </div>
+    </div>
+
+    <!-- Perfiles -->
+    <div class="section">
+        <h2>Perfiles</h2>
+        <div class="grid">
+            <% 
+            const perfiles = [
+                'P046','P047','P048','P049','P050','P051',
+                'P061','P062','P063','P064','P065','P066',
+                'P071','P072','P073','P074','P075','P076','P077','P078','P079',
+                'P080','P081','P082','P083','P084','P085','P086','P087','P088',
+                'P089','P090','P091','P092','P093','P094','P095','P096','P097',
+                'P098','P099','P100','P101','P102','P103','P104','P105','P106','P107'
+            ]; 
+            %>
+
+            <% perfiles.forEach(p => { %>
+                <div>
+                    <label><%= p %></label>
+                    <input name="<%= p %>" type="number" step="any">
+                </div>
+            <% }) %>
+        </div>
+    </div>
+
+    <!-- Final -->
+    <div class="section">
+        <h2>Final</h2>
+        <div class="grid">
+            <div><label>P110 ejection speed 100%</label><input name="P110" type="number"></div>
+            <div><label>P111 Average value piston</label><input name="P111" type="number"></div>
+            <div><label>P112 Drawing speed 100%</label><input name="P112" type="number"></div>
+            <div><label>P113 Average value trefilado</label><input name="P113" type="number"></div>
+            <div><label>P114 nozzle stroke</label><input name="P114" type="number"></div>
+        </div>
+    </div>
+
+    <button type="submit">Guardar</button>
+</form>
+
+<script>
+    function actualizarFecha() {
+        const ahora = new Date();
+        const formato = ahora.toLocaleString();
+        document.getElementById("fechaHoraVisible").value = formato;
+        document.getElementById("timestamp").value = ahora.toISOString();
+    }
+
+    setInterval(actualizarFecha, 1000);
+    actualizarFecha();
+</script>
+
+</body>
+</html>
