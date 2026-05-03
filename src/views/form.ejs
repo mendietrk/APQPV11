@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title><%= formulario.titulo %></title>
+
+    <style>
+        body { font-family: Arial; margin: 20px; }
+
+        .pregunta {
+            border: 1px solid #ccc;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            background: #f9f9f9;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        textarea, input, select {
+            width: 100%;
+            margin-top: 5px;
+            padding: 6px;
+        }
+
+        .opciones {
+            margin-top: 5px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h2><%= formulario.titulo %></h2>
+
+<form action="/responder-formulario/<%= formulario._id %>" method="POST">
+
+    <!-- 🔽 Selección de número de parte -->
+    <div class="pregunta">
+        <label>Número de Parte:</label>
+        <select name="parteId" required>
+            <option value="">Seleccione una opción</option>
+            <% partes.forEach(parte => { %>
+                <option value="<%= parte._id %>">
+                    <%= parte.pa6 %>
+                </option>
+            <% }) %>
+        </select>
+    </div>
+
+    <!-- 🔁 Preguntas dinámicas -->
+    <% formulario.campos.forEach((campo, index) => { %>
+        <div class="pregunta">
+
+            <label>
+                <%= campo.label %>
+                <% if (campo.requerido) { %> * <% } %>
+            </label>
+
+            <% if (campo.tipo === 'text') { %>
+                <textarea name="respuestas[<%= index %>]" <%= campo.requerido ? 'required' : '' %>></textarea>
+
+            <% } else if (campo.tipo === 'number') { %>
+                <input type="number" name="respuestas[<%= index %>]" <%= campo.requerido ? 'required' : '' %>>
+
+            <% } else if (campo.tipo === 'email') { %>
+                <input type="email" name="respuestas[<%= index %>]" <%= campo.requerido ? 'required' : '' %>>
+
+            <% } else if (campo.tipo === 'date') { %>
+                <input type="date" name="respuestas[<%= index %>]" <%= campo.requerido ? 'required' : '' %>>
+
+            <% } else if (campo.tipo === 'select') { %>
+                <select name="respuestas[<%= index %>]">
+                    <% campo.opciones.forEach(op => { %>
+                        <option value="<%= op %>"><%= op %></option>
+                    <% }) %>
+                </select>
+
+            <% } else if (campo.tipo === 'radio') { %>
+                <div class="opciones">
+                    <% campo.opciones.forEach(op => { %>
+                        <label>
+                            <input type="radio" name="respuestas[<%= index %>]" value="<%= op %>">
+                            <%= op %>
+                        </label><br>
+                    <% }) %>
+                </div>
+
+            <% } else if (campo.tipo === 'checkbox') { %>
+                <div class="opciones">
+                    <% campo.opciones.forEach(op => { %>
+                        <label>
+                            <input type="checkbox" name="respuestas[<%= index %>][]" value="<%= op %>">
+                            <%= op %>
+                        </label><br>
+                    <% }) %>
+                </div>
+            <% } %>
+
+        </div>
+    <% }) %>
+
+    <button type="submit">Enviar Respuestas</button>
+
+</form>
+
+</body>
+</html>

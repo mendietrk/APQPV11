@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Seleccionar Formulario</title>
+
+    <style>
+        body { font-family: Arial; margin: 20px; }
+
+        .formulario {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+
+        h3 {
+            margin: 0 0 10px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 12px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .descripcion {
+            color: #555;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Selecciona un Formulario</h2>
+
+<% if (formularios.length === 0) { %>
+    <p>No hay formularios disponibles.</p>
+<% } %>
+
+<% formularios.forEach(form => { %>
+    <div class="formulario">
+        <h3><%= form.titulo %></h3>
+
+        <% if (form.descripcion) { %>
+            <div class="descripcion"><%= form.descripcion %></div>
+        <% } %>
+
+        <p><strong>Preguntas:</strong> <%= form.campos.length %></p>
+
+        <a class="btn" href="/form/<%= form._id %>">
+            Llenar formulario
+        </a>
+    </div>
+<% }) %>
+
+</body>
+</html>

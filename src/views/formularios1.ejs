@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Formularios Guardados</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .formulario {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        .campo {
+            margin-left: 15px;
+        }
+        .botones {
+            margin-top: 10px;
+        }
+        a {
+            text-decoration: none;
+            padding: 6px 10px;
+            background: #007BFF;
+            color: white;
+            border-radius: 4px;
+        }
+        a:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Formularios Guardados</h2>
+
+<% if (formularios.length === 0) { %>
+    <p>No hay formularios registrados.</p>
+<% } %>
+
+<% formularios.forEach(form => { %>
+    <div class="formulario">
+        <h3><%= form.titulo %></h3>
+
+        <strong>Campos:</strong>
+        <ul>
+            <% form.campos.forEach(campo => { %>
+                <li class="campo">
+                    <%= campo.label %> 
+                    (<%= campo.tipo %>)
+                </li>
+            <% }) %>
+        </ul>
+
+        <div class="botones">
+            <!-- Botón editar -->
+            <a href="/editar-formulario/<%= form._id %>">Editar</a>
+        </div>
+    </div>
+<% }) %>
+
+</body>
+</html>

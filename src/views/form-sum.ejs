@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen de Respuestas</title>
+
+    <style>
+        body { font-family: Arial; margin: 20px; }
+
+        select {
+            padding: 6px;
+            margin-bottom: 15px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+
+        .pregunta {
+            font-weight: bold;
+            background: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Resumen de Formularios</h2>
+
+<!-- 🔽 Selector de formulario -->
+<form method="GET" action="/form-sum">
+    <label>Selecciona un formulario:</label><br>
+    <select name="formularioId" onchange="this.form.submit()">
+        <option value="">-- Seleccionar --</option>
+        <% formularios.forEach(f => { %>
+            <option value="<%= f._id %>" <%= formularioSeleccionado == f._id.toString() ? 'selected' : '' %>>
+                <%= f.titulo %>
+            </option>
+        <% }) %>
+    </select>
+</form>
+
+<% if (resumen && resumen.length > 0) { %>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Pregunta</th>
+
+                <!-- columnas = números de parte -->
+                <% partes.forEach(p => { %>
+                    <th><%= p.pa6 %></th>
+                <% }) %>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            <!-- filas = preguntas -->
+            <% resumen.forEach((fila, index) => { %>
+                <tr>
+                    <td class="pregunta"><%= fila.pregunta %></td>
+
+                    <% fila.respuestas.forEach(valor => { %>
+                        <td>
+                            <% if (Array.isArray(valor)) { %>
+                                <%= valor.join(', ') %>
+                            <% } else { %>
+                                <%= valor || '' %>
+                            <% } %>
+                        </td>
+                    <% }) %>
+                </tr>
+            <% }) %>
+
+        </tbody>
+    </table>
+
+<% } %>
+
+</body>
+</html>

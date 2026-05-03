@@ -9,6 +9,8 @@ const puppeteer = require("puppeteer"); // O puppeteer-core, según usas
 const RegistroProduccion = require('../models/RegistroProduccion');
 const Medicion = require('./models/Medicion');
 const PMS = require('../models/pms');
+const Formulario = require('../models/formulario1');
+const Answer = require('../models/answers');
 
 router.get('/inventory', async (req, res) => {
   const inventario = await RegistroProduccion.find().sort({ fechaFabricacion: -1 });
@@ -3396,6 +3398,159 @@ router.get('/pmsm', async (req, res) => {
         console.error(error);
         res.status(500).send('Error al obtener datos');
     }
+});
+
+router.get('/formulario1', async (req, res) => {
+  res.render('formulario1');
+});
+
+router.get('/formularios1', async (req, res) => {
+  const formularios = await Formulario.find().sort({ _id: -1 });
+  res.render('formularios1', { formularios });
+});
+
+router.post('/guardar-formulario', async (req, res) => {
+  try {
+    console.log(req.body); // 👈 ver qué llega
+
+    const nuevoFormulario = new Formulario({
+      titulo: req.body.titulo,
+      campos: Object.values(req.body.campos || {})
+    });
+
+    await nuevoFormulario.save();
+
+    res.redirect('/formularios1');
+
+  } catch (error) {
+    console.error("ERROR REAL:", error); // 👈 MUY IMPORTANTE
+    res.send('Error al guardar formulario');
+  }
+});
+
+router.get('/editar-formulario/:id', async (req, res) => {
+  try {
+    const formulario = await Formulario.findById(req.params.id);
+
+    if (!formulario) {
+      return res.send('Formulario no encontrado');
+    }
+
+    res.render('editar-formulario', { formulario });
+
+  } catch (error) {
+    console.error(error);
+    res.send('Error al cargar formulario');
+  }
+});
+
+router.post('/actualizar-formulario/:id', async (req, res) => {
+  try {
+    await Formulario.findByIdAndUpdate(req.params.id, {
+      titulo: req.body.titulo,
+      campos: Object.values(req.body.campos || {})
+    });
+
+    res.redirect('/formularios1');
+
+  } catch (error) {
+    console.error(error);
+    res.send('Error al actualizar');
+  }
+});
+
+router.get('/form/:id', async (req, res) => {
+  const formulario = await Formulario.findById(req.params.id);
+  const partes = await Par.find({ pa6: { $ne: null, $ne: "" } });
+
+  res.render('form', { formulario, partes });
+});
+
+router.post('/responder-formulario/:id', async (req, res) => {
+  try {
+    const formulario = await Formulario.findById(req.params.id);
+
+    const respuestasProcesadas = formulario.campos.map((campo, index) => {
+      return {
+        pregunta: campo.label,
+        valor: req.body.respuestas[index]
+      };
+    });
+
+    const nuevaRespuesta = new Answer({
+      formularioId: req.params.id,
+      parteId: req.body.parteId,
+      respuestas: respuestasProcesadas
+    });
+
+    await nuevaRespuesta.save();
+
+    res.send('Respuestas guardadas correctamente');
+
+  } catch (error) {
+    console.error(error);
+    res.send('Error al guardar respuestas');
+  }
+});
+
+router.get('/forms', async (req, res) => {
+  const formularios = await Formulario.find().sort({ createdAt: -1 });
+  res.render('forms', { formularios });
+});
+
+router.get('/form-sum', async (req, res) => {
+  const formularios = await Formulario.find();
+  const formularioId = req.query.formularioId;
+
+  let resumen = [];
+  let partes = [];
+
+  if (formularioId) {
+
+    const respuestas = await Answer.find({ formularioId }).populate('parteId');
+
+    // Obtener partes únicas
+    const mapaPartes = {};
+    respuestas.forEach(r => {
+      if (r.parteId && r.parteId.pa6) {
+        mapaPartes[r.parteId._id] = r.parteId;
+      }
+    });
+
+    partes = Object.values(mapaPartes);
+
+    // Construir matriz tipo Excel
+    const preguntasMap = {};
+
+    respuestas.forEach(r => {
+      const parteKey = r.parteId?._id.toString();
+
+      r.respuestas.forEach(resp => {
+        if (!preguntasMap[resp.pregunta]) {
+          preguntasMap[resp.pregunta] = {};
+        }
+
+        preguntasMap[resp.pregunta][parteKey] = resp.valor;
+      });
+    });
+
+    // Convertir a arreglo ordenado
+    resumen = Object.keys(preguntasMap).map(pregunta => {
+      return {
+        pregunta,
+        respuestas: partes.map(p => {
+          return preguntasMap[pregunta][p._id.toString()] || '';
+        })
+      };
+    });
+  }
+
+  res.render('form-sum', {
+    formularios,
+    resumen,
+    partes,
+    formularioSeleccionado: formularioId
+  });
 });
 
 // Exports
