@@ -11,6 +11,7 @@ const Medicion = require('./models/Medicion');
 const PMS = require('../models/pms');
 const Formulario = require('../models/formulario1');
 const Answer = require('../models/answers');
+const Formulario2 = require('../models/formulario2');
 
 router.get('/inventory', async (req, res) => {
   const inventario = await RegistroProduccion.find().sort({ fechaFabricacion: -1 });
@@ -3551,6 +3552,115 @@ router.get('/form-sum', async (req, res) => {
     partes,
     formularioSeleccionado: formularioId
   });
+});
+
+router.post('/guardar-formulario2', async (req, res) => {
+  try {
+    const filas = Object.values(req.body.filas || {});
+
+    console.log(filas); // aquí puedes guardar en Mongo
+
+    res.send('Datos guardados correctamente');
+  } catch (error) {
+    console.error(error);
+    res.send('Error al guardar');
+  }
+});
+
+router.post('/guardar-formulario2', async (req, res) => {
+  try {
+    const filas = Object.values(req.body.filas || {}).map(f => ({
+      nombre: f.nombre,
+      nominal: f.nominal || null,
+      lie: f.lie || null,
+      lse: f.lse || null,
+      lic: f.lic || null,
+      lsc: f.lsc || null,
+      unidad: f.unidad || ''
+    }));
+
+    const nuevo = new Formulario2({ filas });
+
+    await nuevo.save();
+
+    res.send('Formulario2 guardado correctamente');
+  } catch (error) {
+    console.error(error);
+    res.send('Error al guardar');
+  }
+});
+
+router.get('/formulario3', async (req, res) => {
+  const partes = await Par.find({ pa6: { $ne: null, $ne: "" } });
+  res.render('formulario2', { partes });
+});
+
+router.post('/guardar-formulario3', async (req, res) => {
+  try {
+    const filas = Object.values(req.body.filas || {}).map(f => ({
+      nombre: f.nombre,
+      nominal: f.nominal ? Number(f.nominal) : null,
+      lie: f.lie ? Number(f.lie) : null,
+      lse: f.lse ? Number(f.lse) : null,
+      lic: f.lic ? Number(f.lic) : null,
+      lsc: f.lsc ? Number(f.lsc) : null,
+      unidad: f.unidad || ''
+    }));
+
+  const nuevo = new Formulario2({
+  pa6: req.body.pa6,   // 👈 ESTA es la clave
+  filas
+});
+
+    await nuevo.save();
+
+    res.send('Formulario guardado correctamente');
+
+  } catch (error) {
+    console.error(error);
+    res.send('Error al guardar');
+  }
+});
+
+router.get('/forms2', async (req, res) => {
+  const formularios = await Formulario2
+    .find()
+    .populate('parteId') // 👈 clave para pa6
+    .sort({ createdAt: -1 });
+
+  res.render('forms2', { formularios });
+});
+
+router.get('/formedit2/:id', async (req, res) => {
+  const formulario = await Formulario2.findById(req.params.id).populate('parteId');
+  const partes = await Par.find({ pa6: { $ne: null, $ne: "" } });
+
+  res.render('formedit2', { formulario, partes });
+});
+
+router.post('/actualizar-formulario2/:id', async (req, res) => {
+  try {
+    const filas = Object.values(req.body.filas || {}).map(f => ({
+      nombre: f.nombre,
+      nominal: f.nominal ? Number(f.nominal) : null,
+      lie: f.lie ? Number(f.lie) : null,
+      lse: f.lse ? Number(f.lse) : null,
+      lic: f.lic ? Number(f.lic) : null,
+      lsc: f.lsc ? Number(f.lsc) : null,
+      unidad: f.unidad || ''
+    }));
+
+    await Formulario2.findByIdAndUpdate(req.params.id, {
+      parteId: req.body.parteId,
+      filas
+    });
+
+    res.redirect('/forms2');
+
+  } catch (error) {
+    console.error(error);
+    res.send('Error al actualizar');
+  }
 });
 
 // Exports

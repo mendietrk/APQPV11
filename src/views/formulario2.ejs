@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Formulario de Características</title>
+
+    <style>
+        body { font-family: Arial; margin: 20px; }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        input, select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 4px;
+        }
+
+        .btn {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-add { background: #28a745; color: white; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-save { background: #007bff; color: white; }
+    </style>
+</head>
+<body>
+
+<h2>Registro de Características</h2>
+
+<form action="/guardar-formulario3" method="POST">
+
+    <!-- 🔽 Selección de número de parte -->
+    <label><strong>Número de Parte (pa6):</strong></label><br>
+    <select name="pa6" required>
+  <option value="">Seleccione</option>
+  <% partes.forEach(par => { %>
+    <option value="<%= par.pa6 %>">
+      <%= par.pa6 %>
+    </option>
+  <% }) %>
+</select>
+
+    <br><br>
+
+    <table id="tabla">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Nominal</th>
+                <th>LIE</th>
+                <th>LSE</th>
+                <th>LIC</th>
+                <th>LSC</th>
+                <th>Unidad</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+
+        <tbody id="tbody"></tbody>
+    </table>
+
+    <button type="button" class="btn btn-add" onclick="agregarFila()">
+        ➕ Agregar fila
+    </button>
+
+    <br><br>
+
+    <button type="submit" class="btn btn-save">
+        💾 Guardar
+    </button>
+
+</form>
+
+<script>
+let contador = 0;
+
+function agregarFila() {
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+        <td><input type="text" name="filas[${contador}][nombre]" required></td>
+        <td><input type="number" step="any" name="filas[${contador}][nominal]"></td>
+        <td><input type="number" step="any" name="filas[${contador}][lie]"></td>
+        <td><input type="number" step="any" name="filas[${contador}][lse]"></td>
+        <td><input type="number" step="any" name="filas[${contador}][lic]"></td>
+        <td><input type="number" step="any" name="filas[${contador}][lsc]"></td>
+        <td><input type="text" name="filas[${contador}][unidad]"></td>
+        <td>
+            <button type="button" class="btn btn-delete" onclick="this.closest('tr').remove()">❌</button>
+        </td>
+    `;
+
+    document.getElementById('tbody').appendChild(tr);
+    contador++;
+}
+
+// fila inicial
+agregarFila();
+</script>
+
+</body>
+</html>

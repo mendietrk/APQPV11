@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Listado Formulario2</title>
+
+    <style>
+        body { font-family: Arial; margin: 20px; }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+
+        .btn {
+            padding: 6px 10px;
+            text-decoration: none;
+            border-radius: 4px;
+            color: white;
+        }
+
+        .btn-edit {
+            background: #28a745;
+        }
+
+        .btn-edit:hover {
+            background: #1e7e34;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Listado de Formularios (Formulario2)</h2>
+
+<% if (!formularios || formularios.length === 0) { %>
+    <p>No hay registros disponibles.</p>
+<% } else { %>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Título</th>
+            <th>Número de Parte (pa6)</th>
+            <th>Total Filas</th>
+            <th>Fecha</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        <% formularios.forEach((f, index) => { %>
+            <tr>
+                <td><%= index + 1 %></td>
+
+                <td><%= f.titulo %></td>
+
+               <td><%= f.pa6 || 'N/A' %></td>
+
+                <td><%= f.filas ? f.filas.length : 0 %></td>
+
+                <td>
+                    <%= f.createdAt ? new Date(f.createdAt).toLocaleString() : '' %>
+                </td>
+
+                <td>
+                    <a class="btn btn-edit" href="/formedit2/<%= f._id %>">
+                        ✏️ Editar
+                    </a>
+                </td>
+            </tr>
+        <% }) %>
+    </tbody>
+</table>
+
+<% } %>
+
+</body>
+</html>

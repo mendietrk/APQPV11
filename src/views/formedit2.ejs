@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Formulario2</title>
+
+    <style>
+        body { font-family: Arial; margin: 20px; }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: center;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        input, select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 4px;
+        }
+
+        .btn {
+            padding: 6px 10px;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-add { background: #28a745; color: white; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-save { background: #007bff; color: white; }
+    </style>
+</head>
+<body>
+
+<h2>Editar Formulario</h2>
+
+<form action="/actualizar-formulario2/<%= formulario._id %>" method="POST">
+
+    <!-- 🔽 Número de parte -->
+    <label><strong>Número de Parte (pa6):</strong></label><br>
+    <select name="parteId" required>
+        <% partes.forEach(parte => { %>
+            <option value="<%= parte._id %>" 
+                <%= formulario.parteId && parte._id.toString() === formulario.parteId._id.toString() ? 'selected' : '' %>>
+                <%= parte.pa6 %>
+            </option>
+        <% }) %>
+    </select>
+
+    <br><br>
+
+    <table id="tabla">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Nominal</th>
+                <th>LIE</th>
+                <th>LSE</th>
+                <th>LIC</th>
+                <th>LSC</th>
+                <th>Unidad</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+
+        <tbody id="tbody">
+
+            <% formulario.filas.forEach((fila, index) => { %>
+                <tr>
+                    <td><input type="text" name="filas[<%= index %>][nombre]" value="<%= fila.nombre %>" required></td>
+                    <td><input type="number" step="any" name="filas[<%= index %>][nominal]" value="<%= fila.nominal %>"></td>
+                    <td><input type="number" step="any" name="filas[<%= index %>][lie]" value="<%= fila.lie %>"></td>
+                    <td><input type="number" step="any" name="filas[<%= index %>][lse]" value="<%= fila.lse %>"></td>
+                    <td><input type="number" step="any" name="filas[<%= index %>][lic]" value="<%= fila.lic %>"></td>
+                    <td><input type="number" step="any" name="filas[<%= index %>][lsc]" value="<%= fila.lsc %>"></td>
+                    <td><input type="text" name="filas[<%= index %>][unidad]" value="<%= fila.unidad %>"></td>
+                    <td>
+                        <button type="button" class="btn btn-delete" onclick="this.closest('tr').remove()">❌</button>
+                    </td>
+                </tr>
+            <% }) %>
+
+        </tbody>
+    </table>
+
+    <button type="button" class="btn btn-add" onclick="agregarFila()">
+        ➕ Agregar renglón
+    </button>
+
+    <br><br>
+
+    <button type="submit" class="btn btn-save">
+        💾 Actualizar
+    </button>
+
+</form>
+
+<script>
+let contador = <%= formulario.filas.length %>;
+
+function agregarFila() {
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+        <td><input type="text" name="filas[${contador}][nombre]" required></td>
+        <td><input type="number" step="any" name="filas[${contador}][nominal]"></td>
+        <td><input type="number" step="any" name="filas[${contador}][lie]"></td>
+        <td><input type="number" step="any" name="filas[${contador}][lse]"></td>
+        <td><input type="number" step="any" name="filas[${contador}][lic]"></td>
+        <td><input type="number" step="any" name="filas[${contador}][lsc]"></td>
+        <td><input type="text" name="filas[${contador}][unidad]"></td>
+        <td>
+            <button type="button" class="btn btn-delete" onclick="this.closest('tr').remove()">❌</button>
+        </td>
+    `;
+
+    document.getElementById('tbody').appendChild(tr);
+    contador++;
+}
+</script>
+
+</body>
+</html>
