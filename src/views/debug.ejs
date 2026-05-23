@@ -1,0 +1,526 @@
+<%
+/* =========================================
+   CONFIG
+========================================= */
+
+const nombresPuntos = [
+  'p1','p2','p3','p4','p5',
+  'p6','p7','p8','p9','p10',
+  'p4_2'
+];
+
+/* =========================================
+   FUNCIONES
+========================================= */
+
+function valor(v){
+
+  if(v === undefined || v === null)
+    return '';
+
+  return Number(v);
+}
+
+function recolectarValores(){
+
+  const columnas = {};
+
+  function pushValor(nombre, valor){
+
+    if(typeof valor !== 'number' || isNaN(valor))
+      return;
+
+    if(!columnas[nombre])
+      columnas[nombre] = [];
+
+    columnas[nombre].push(valor);
+  }
+
+  mediciones.forEach(item => {
+
+    pushValor('peso', item.peso);
+
+    ['A','B','C'].forEach(k => {
+
+      pushValor(
+        'r_pequena_' + k,
+        item.mediciones?.r_pequena?.[k]
+      );
+
+      pushValor(
+        'grandeD1_' + k,
+        item.mediciones?.grandeD1?.[k]
+      );
+
+      pushValor(
+        'grandeD2_' + k,
+        item.mediciones?.grandeD2?.[k]
+      );
+
+    });
+
+    nombresPuntos.forEach(p => {
+
+      ['A','B','C'].forEach(k => {
+
+        pushValor(
+          p + '_peak_' + k,
+          item.mediciones?.puntos?.[p]?.peak?.[k]
+        );
+
+        pushValor(
+          p + '_root_' + k,
+          item.mediciones?.puntos?.[p]?.root?.[k]
+        );
+
+      });
+
+    });
+
+  });
+
+  return columnas;
+}
+
+const columnas = recolectarValores();
+
+function esMin(columna, valor){
+
+  if(typeof valor !== 'number')
+    return false;
+
+  const vals = columnas[columna] || [];
+
+  if(vals.length === 0)
+    return false;
+
+  return valor === Math.min(...vals);
+}
+
+function esMax(columna, valor){
+
+  if(typeof valor !== 'number')
+    return false;
+
+  const vals = columnas[columna] || [];
+
+  if(vals.length === 0)
+    return false;
+
+  return valor === Math.max(...vals);
+}
+
+function clase(columna, valor){
+
+  if(esMin(columna, valor))
+    return 'minimo';
+
+  if(esMax(columna, valor))
+    return 'maximo';
+
+  return '';
+}
+%>
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>DEBUG DATABASE</title>
+
+<style>
+
+body{
+  font-family:Arial;
+  margin:20px;
+}
+
+table{
+  border-collapse:collapse;
+  width:max-content;
+  min-width:100%;
+  font-size:12px;
+}
+
+th, td{
+  border:1px solid #ccc;
+  padding:4px;
+  text-align:center;
+  white-space:nowrap;
+}
+
+th{
+  background:#efefef;
+  position:sticky;
+  top:0;
+  z-index:2;
+}
+
+input{
+  width:70px;
+  padding:3px;
+  text-align:center;
+  border:1px solid #999;
+}
+
+.minimo{
+  background:#ffe0e0;
+}
+
+.maximo{
+  background:#d9ffd9;
+}
+
+.saveBtn{
+  display:none;
+  margin-left:4px;
+  padding:2px 6px;
+  font-size:11px;
+  cursor:pointer;
+}
+
+.cellContainer{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.container{
+  overflow:auto;
+  max-height:90vh;
+}
+
+.filterBox{
+  margin-bottom:20px;
+}
+
+.filterBox input{
+  width:250px;
+  padding:6px;
+}
+
+.filterBox button{
+  padding:6px 12px;
+  cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>DEBUG DATABASE</h1>
+
+<!-- =====================================
+     FILTRO
+===================================== -->
+
+<div class="filterBox">
+
+<form method="GET" action="/debug">
+
+  <input
+    type="text"
+    name="numeroParte"
+    placeholder="Numero de Parte"
+    value="<%= numeroParte || '' %>"
+  >
+
+  <button type="submit">
+    Filtrar
+  </button>
+
+  <a href="/debug">
+
+    <button type="button">
+      Limpiar
+    </button>
+
+  </a>
+
+</form>
+
+</div>
+
+
+<div class="container">
+
+<table>
+
+<thead>
+
+<tr>
+
+  <th>ID</th>
+
+  <th>Parte</th>
+
+  <th>Fecha</th>
+
+  <th>peso</th>
+
+  <% ['A','B','C'].forEach(k => { %>
+
+    <th>r_pequena_<%= k %></th>
+
+  <% }) %>
+
+  <% ['A','B','C'].forEach(k => { %>
+
+    <th>grandeD1_<%= k %></th>
+
+  <% }) %>
+
+  <% ['A','B','C'].forEach(k => { %>
+
+    <th>grandeD2_<%= k %></th>
+
+  <% }) %>
+
+  <% nombresPuntos.forEach(p => { %>
+
+    <% ['A','B','C'].forEach(k => { %>
+
+      <th><%= p %>_peak_<%= k %></th>
+
+    <% }) %>
+
+    <% ['A','B','C'].forEach(k => { %>
+
+      <th><%= p %>_root_<%= k %></th>
+
+    <% }) %>
+
+  <% }) %>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<% mediciones.forEach(item => { %>
+
+<tr>
+
+  <td>
+    <%= item._id %>
+  </td>
+
+  <td>
+    <%= item.numeroParte %>
+  </td>
+
+  <td>
+    <%= new Date(item.createdAt).toLocaleString() %>
+  </td>
+
+  <!-- =====================================
+       PESO
+  ===================================== -->
+
+  <td class="<%= clase('peso', item.peso) %>">
+
+    <form
+      method="POST"
+      action="/debug/save/<%= item._id %>"
+    >
+
+      <div class="cellContainer">
+
+        <input
+          type="number"
+          step="any"
+          name="peso"
+          value="<%= valor(item.peso) %>"
+          onchange="mostrarBoton(this)"
+        >
+
+        <button
+          class="saveBtn"
+          type="submit"
+        >
+          Guardar
+        </button>
+
+      </div>
+
+    </form>
+
+  </td>
+
+
+  <!-- =====================================
+       GENERALES
+  ===================================== -->
+
+  <% ['r_pequena','grandeD1','grandeD2']
+    .forEach(campo => {
+
+      ['A','B','C'].forEach(k => {
+
+        const val =
+          item.mediciones?.[campo]?.[k];
+
+  %>
+
+    <td class="<%= clase(campo + '_' + k, val) %>">
+
+      <form
+        method="POST"
+        action="/debug/save/<%= item._id %>"
+      >
+
+        <div class="cellContainer">
+
+          <input
+            type="number"
+            step="any"
+            name="<%= campo %>_<%= k %>"
+            value="<%= valor(val) %>"
+            onchange="mostrarBoton(this)"
+          >
+
+          <button
+            class="saveBtn"
+            type="submit"
+          >
+            Guardar
+          </button>
+
+        </div>
+
+      </form>
+
+    </td>
+
+  <% }) }) %>
+
+
+  <!-- =====================================
+       PUNTOS
+  ===================================== -->
+
+  <% nombresPuntos.forEach(p => { %>
+
+    <!-- PEAK -->
+
+    <% ['A','B','C'].forEach(k => {
+
+      const val =
+        item.mediciones?.puntos?.[p]?.peak?.[k];
+
+    %>
+
+      <td class="<%= clase(p + '_peak_' + k, val) %>">
+
+        <form
+          method="POST"
+          action="/debug/save/<%= item._id %>"
+        >
+
+          <div class="cellContainer">
+
+            <input
+              type="number"
+              step="any"
+              name="<%= p %>_peak_<%= k %>"
+              value="<%= valor(val) %>"
+              onchange="mostrarBoton(this)"
+            >
+
+            <button
+              class="saveBtn"
+              type="submit"
+            >
+              Guardar
+            </button>
+
+          </div>
+
+        </form>
+
+      </td>
+
+    <% }) %>
+
+
+    <!-- ROOT -->
+
+    <% ['A','B','C'].forEach(k => {
+
+      const val =
+        item.mediciones?.puntos?.[p]?.root?.[k];
+
+    %>
+
+      <td class="<%= clase(p + '_root_' + k, val) %>">
+
+        <form
+          method="POST"
+          action="/debug/save/<%= item._id %>"
+        >
+
+          <div class="cellContainer">
+
+            <input
+              type="number"
+              step="any"
+              name="<%= p %>_root_<%= k %>"
+              value="<%= valor(val) %>"
+              onchange="mostrarBoton(this)"
+            >
+
+            <button
+              class="saveBtn"
+              type="submit"
+            >
+              Guardar
+            </button>
+
+          </div>
+
+        </form>
+
+      </td>
+
+    <% }) %>
+
+  <% }) %>
+
+</tr>
+
+<% }) %>
+
+</tbody>
+
+</table>
+
+</div>
+
+
+<script>
+
+function mostrarBoton(input){
+
+  const btn =
+    input.parentElement
+      .querySelector('.saveBtn');
+
+  if(btn){
+
+    btn.style.display = 'inline-block';
+
+  }
+
+}
+
+</script>
+
+</body>
+
+</html>

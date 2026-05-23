@@ -3663,5 +3663,312 @@ router.post('/actualizar-formulario2/:id', async (req, res) => {
   }
 });
 
+router.get('/cpk', async (req, res) => {
+
+  try {
+
+    // filtro por numero de parte
+    const numeroParte = req.query.numeroParte || '';
+
+    let filtro = {};
+
+    if (numeroParte.trim() !== '') {
+
+      filtro.numeroParte = {
+        $regex: numeroParte,
+        $options: 'i'
+      };
+
+    }
+
+    // consultar mediciones
+    const mediciones = await Medicion.find(filtro)
+      .sort({ createdAt: 1 });
+
+    // renderizar vista
+    res.render('cpkdata', {
+      mediciones,
+      numeroParte
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).send('Error al cargar datos CPK');
+
+  }
+
+});
+
+router.get('/debug', async (req, res) => {
+
+  try {
+
+    // filtro opcional por numero de parte
+    const numeroParte =
+      req.query.numeroParte || '';
+
+    let filtro = {};
+
+    if(numeroParte.trim() !== ''){
+
+      filtro.numeroParte = {
+        $regex: numeroParte,
+        $options: 'i'
+      };
+
+    }
+
+    // obtener registros ordenados
+    // del mas antiguo al mas reciente
+    const mediciones =
+      await Medicion.find(filtro)
+      .sort({ createdAt: 1 });
+
+    // renderizar vista
+    res.render('debug', {
+
+      mediciones,
+      numeroParte
+
+    });
+
+  } catch(error){
+
+    console.error(error);
+
+    res.status(500).send(error.message);
+
+  }
+
+});
+
+router.post('/debug/save/:id', async (req, res) => {
+
+  try {
+
+    const id = req.params.id;
+
+    const body = req.body;
+
+    const medicion =
+      await Medicion.findById(id);
+
+    if(!medicion){
+
+      return res
+        .status(404)
+        .send('Registro no encontrado');
+
+    }
+
+    // ====================================
+    // FUNCION SEGURA
+    // ====================================
+
+    function toNumber(value){
+
+      // undefined
+      if(value === undefined)
+        return undefined;
+
+      // null
+      if(value === null)
+        return null;
+
+      // string vacio
+      if(String(value).trim() === '')
+        return null;
+
+      // convertir
+      const n = Number(value);
+
+      // NaN
+      if(isNaN(n))
+        return null;
+
+      return n;
+    }
+
+    // ====================================
+    // ASEGURAR ESTRUCTURAS
+    // ====================================
+
+    if(!medicion.mediciones){
+
+      medicion.mediciones = {};
+
+    }
+
+    if(!medicion.mediciones.r_pequena){
+
+      medicion.mediciones.r_pequena = {};
+
+    }
+
+    if(!medicion.mediciones.grandeD1){
+
+      medicion.mediciones.grandeD1 = {};
+
+    }
+
+    if(!medicion.mediciones.grandeD2){
+
+      medicion.mediciones.grandeD2 = {};
+
+    }
+
+    if(!medicion.mediciones.puntos){
+
+      medicion.mediciones.puntos = {};
+
+    }
+
+    // ====================================
+    // PESO
+    // ====================================
+
+    if(body.peso !== undefined){
+
+      medicion.peso =
+        toNumber(body.peso);
+
+    }
+
+    // ====================================
+    // GENERALES
+    // ====================================
+
+    ['A','B','C'].forEach(k => {
+
+      const rpeq =
+        body['r_pequena_' + k];
+
+      if(rpeq !== undefined){
+
+        medicion.mediciones
+          .r_pequena[k] =
+          toNumber(rpeq);
+
+      }
+
+      const gd1 =
+        body['grandeD1_' + k];
+
+      if(gd1 !== undefined){
+
+        medicion.mediciones
+          .grandeD1[k] =
+          toNumber(gd1);
+
+      }
+
+      const gd2 =
+        body['grandeD2_' + k];
+
+      if(gd2 !== undefined){
+
+        medicion.mediciones
+          .grandeD2[k] =
+          toNumber(gd2);
+
+      }
+
+    });
+
+    // ====================================
+    // PUNTOS
+    // ====================================
+
+    const puntos = [
+      'p1','p2','p3','p4','p5',
+      'p6','p7','p8','p9','p10',
+      'p4_2'
+    ];
+
+    puntos.forEach(p => {
+
+      // crear punto
+      if(!medicion.mediciones.puntos[p]){
+
+        medicion.mediciones.puntos[p] = {};
+
+      }
+
+      // crear peak
+      if(!medicion.mediciones.puntos[p].peak){
+
+        medicion.mediciones.puntos[p].peak = {};
+
+      }
+
+      // crear root
+      if(!medicion.mediciones.puntos[p].root){
+
+        medicion.mediciones.puntos[p].root = {};
+
+      }
+
+      ['A','B','C'].forEach(k => {
+
+        // ===============================
+        // PEAK
+        // ===============================
+
+        const peakValue =
+          body[p + '_peak_' + k];
+
+        if(peakValue !== undefined){
+
+          medicion.mediciones
+            .puntos[p]
+            .peak[k] =
+            toNumber(peakValue);
+
+        }
+
+        // ===============================
+        // ROOT
+        // ===============================
+
+        const rootValue =
+          body[p + '_root_' + k];
+
+        if(rootValue !== undefined){
+
+          medicion.mediciones
+            .puntos[p]
+            .root[k] =
+            toNumber(rootValue);
+
+        }
+
+      });
+
+    });
+
+    // ====================================
+    // GUARDAR
+    // ====================================
+
+    await medicion.save();
+
+    // ====================================
+    // REDIRECT
+    // ====================================
+
+    res.redirect('back');
+
+  } catch(error){
+
+    console.error(error);
+
+    res.status(500).send(error.message);
+
+  }
+
+});
+
 // Exports
 module.exports = router

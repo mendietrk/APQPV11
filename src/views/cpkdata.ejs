@@ -1,0 +1,469 @@
+<%
+/* =========================================
+   FUNCIONES
+========================================= */
+
+function promedioTriple(triple) {
+
+  if (!triple) return null;
+
+  const valores = [
+    triple.A,
+    triple.B,
+    triple.C
+  ].filter(v => typeof v === 'number');
+
+  if (valores.length === 0) return null;
+
+  return valores.reduce((a, b) => a + b, 0) / valores.length;
+}
+
+function format(v) {
+
+  if (v === null || v === undefined || isNaN(v))
+    return '';
+
+  return Number(v).toFixed(4);
+}
+
+function limpiar(arr) {
+
+  return arr.filter(v =>
+    typeof v === 'number' && !isNaN(v)
+  );
+}
+
+function mean(arr) {
+
+  const vals = limpiar(arr);
+
+  if (vals.length === 0) return null;
+
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function stddev(arr) {
+
+  const vals = limpiar(arr);
+
+  if (vals.length < 2) return null;
+
+  const avg = mean(vals);
+
+  const variance =
+    vals.reduce((sum, val) => {
+      return sum + Math.pow(val - avg, 2);
+    }, 0) / (vals.length - 1);
+
+  return Math.sqrt(variance);
+}
+
+function minValue(arr) {
+
+  const vals = limpiar(arr);
+
+  if (vals.length === 0) return null;
+
+  return Math.min(...vals);
+}
+
+function maxValue(arr) {
+
+  const vals = limpiar(arr);
+
+  if (vals.length === 0) return null;
+
+  return Math.max(...vals);
+}
+
+function rangeValue(arr) {
+
+  const vals = limpiar(arr);
+
+  if (vals.length === 0) return null;
+
+  return Math.max(...vals) - Math.min(...vals);
+}
+
+/* =========================================
+   COLUMNAS
+========================================= */
+
+const nombresPuntos = [
+  'p1','p2','p3','p4','p5',
+  'p6','p7','p8','p9','p10',
+  'p4_2'
+];
+
+/* =========================================
+   RECOLECTAR DATOS FILTRADOS
+========================================= */
+
+const columnas = {
+
+  peso: [],
+
+  r_pequena: [],
+
+  grandeD1: [],
+
+  grandeD2: []
+
+};
+
+nombresPuntos.forEach(p => {
+
+  columnas[p + '_peak'] = [];
+
+  columnas[p + '_root'] = [];
+
+});
+
+/* =========================================
+   LLENAR COLUMNAS
+========================================= */
+
+mediciones.forEach(item => {
+
+  columnas.peso.push(item.peso);
+
+  columnas.r_pequena.push(
+    promedioTriple(item.mediciones?.r_pequena)
+  );
+
+  columnas.grandeD1.push(
+    promedioTriple(item.mediciones?.grandeD1)
+  );
+
+  columnas.grandeD2.push(
+    promedioTriple(item.mediciones?.grandeD2)
+  );
+
+  nombresPuntos.forEach(p => {
+
+    const punto =
+      item.mediciones?.puntos?.[p];
+
+    columnas[p + '_peak'].push(
+      promedioTriple(punto?.peak)
+    );
+
+    columnas[p + '_root'].push(
+      promedioTriple(punto?.root)
+    );
+
+  });
+
+});
+%>
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>CPK EXPORT</title>
+
+<style>
+
+body{
+  font-family: Arial;
+  margin:20px;
+}
+
+table{
+  border-collapse: collapse;
+  width:max-content;
+  min-width:100%;
+  font-size:12px;
+}
+
+th, td{
+  border:1px solid #ccc;
+  padding:4px 8px;
+  text-align:center;
+  white-space:nowrap;
+}
+
+th{
+  background:#efefef;
+  position:sticky;
+  top:0;
+}
+
+.summary{
+  background:#f8f8f8;
+  font-weight:bold;
+}
+
+.container{
+  overflow:auto;
+  max-height:90vh;
+}
+
+form{
+  margin-bottom:20px;
+}
+
+input{
+  padding:6px;
+  width:250px;
+}
+
+button{
+  padding:6px 12px;
+  cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>CPK DATA EXPORT</h1>
+
+<form method="GET" action="/cpk">
+
+  <input
+    type="text"
+    name="numeroParte"
+    placeholder="Número de Parte"
+    value="<%= numeroParte || '' %>"
+  >
+
+  <button type="submit">
+    Buscar
+  </button>
+
+  <a href="/cpk">
+    <button type="button">
+      Limpiar
+    </button>
+  </a>
+
+</form>
+
+<div class="container">
+
+<table>
+
+<thead>
+
+<tr>
+
+  <th>NumeroParte</th>
+
+  <th>Fecha</th>
+
+  <th>Peso</th>
+
+  <th>r_pequena</th>
+
+  <th>grandeD1</th>
+
+  <th>grandeD2</th>
+
+  <% nombresPuntos.forEach(p => { %>
+
+    <th><%= p %>_peak</th>
+
+    <th><%= p %>_root</th>
+
+  <% }) %>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<!-- =====================================
+     DATOS FILTRADOS
+===================================== -->
+
+<% mediciones.forEach(item => { %>
+
+<tr>
+
+  <td>
+    <%= item.numeroParte %>
+  </td>
+
+  <td>
+    <%= new Date(item.createdAt).toLocaleString() %>
+  </td>
+
+  <td>
+    <%= format(item.peso) %>
+  </td>
+
+  <td>
+    <%= format(
+      promedioTriple(item.mediciones?.r_pequena)
+    ) %>
+  </td>
+
+  <td>
+    <%= format(
+      promedioTriple(item.mediciones?.grandeD1)
+    ) %>
+  </td>
+
+  <td>
+    <%= format(
+      promedioTriple(item.mediciones?.grandeD2)
+    ) %>
+  </td>
+
+  <% nombresPuntos.forEach(p => {
+
+    const punto =
+      item.mediciones?.puntos?.[p];
+
+  %>
+
+    <td>
+      <%= format(
+        promedioTriple(punto?.peak)
+      ) %>
+    </td>
+
+    <td>
+      <%= format(
+        promedioTriple(punto?.root)
+      ) %>
+    </td>
+
+  <% }) %>
+
+</tr>
+
+<% }) %>
+
+
+<!-- =====================================
+     MEDIA
+===================================== -->
+
+<tr class="summary">
+
+<td colspan="2">MEDIA</td>
+
+<td><%= format(mean(columnas.peso)) %></td>
+<td><%= format(mean(columnas.r_pequena)) %></td>
+<td><%= format(mean(columnas.grandeD1)) %></td>
+<td><%= format(mean(columnas.grandeD2)) %></td>
+
+<% nombresPuntos.forEach(p => { %>
+
+<td><%= format(mean(columnas[p + '_peak'])) %></td>
+<td><%= format(mean(columnas[p + '_root'])) %></td>
+
+<% }) %>
+
+</tr>
+
+
+<!-- =====================================
+     DESV STD
+===================================== -->
+
+<tr class="summary">
+
+<td colspan="2">DESV_STD</td>
+
+<td><%= format(stddev(columnas.peso)) %></td>
+<td><%= format(stddev(columnas.r_pequena)) %></td>
+<td><%= format(stddev(columnas.grandeD1)) %></td>
+<td><%= format(stddev(columnas.grandeD2)) %></td>
+
+<% nombresPuntos.forEach(p => { %>
+
+<td><%= format(stddev(columnas[p + '_peak'])) %></td>
+<td><%= format(stddev(columnas[p + '_root'])) %></td>
+
+<% }) %>
+
+</tr>
+
+
+<!-- =====================================
+     MINIMO
+===================================== -->
+
+<tr class="summary">
+
+<td colspan="2">MIN</td>
+
+<td><%= format(minValue(columnas.peso)) %></td>
+<td><%= format(minValue(columnas.r_pequena)) %></td>
+<td><%= format(minValue(columnas.grandeD1)) %></td>
+<td><%= format(minValue(columnas.grandeD2)) %></td>
+
+<% nombresPuntos.forEach(p => { %>
+
+<td><%= format(minValue(columnas[p + '_peak'])) %></td>
+<td><%= format(minValue(columnas[p + '_root'])) %></td>
+
+<% }) %>
+
+</tr>
+
+
+<!-- =====================================
+     MAXIMO
+===================================== -->
+
+<tr class="summary">
+
+<td colspan="2">MAX</td>
+
+<td><%= format(maxValue(columnas.peso)) %></td>
+<td><%= format(maxValue(columnas.r_pequena)) %></td>
+<td><%= format(maxValue(columnas.grandeD1)) %></td>
+<td><%= format(maxValue(columnas.grandeD2)) %></td>
+
+<% nombresPuntos.forEach(p => { %>
+
+<td><%= format(maxValue(columnas[p + '_peak'])) %></td>
+<td><%= format(maxValue(columnas[p + '_root'])) %></td>
+
+<% }) %>
+
+</tr>
+
+
+<!-- =====================================
+     RANGO
+===================================== -->
+
+<tr class="summary">
+
+<td colspan="2">RANGO</td>
+
+<td><%= format(rangeValue(columnas.peso)) %></td>
+<td><%= format(rangeValue(columnas.r_pequena)) %></td>
+<td><%= format(rangeValue(columnas.grandeD1)) %></td>
+<td><%= format(rangeValue(columnas.grandeD2)) %></td>
+
+<% nombresPuntos.forEach(p => { %>
+
+<td><%= format(rangeValue(columnas[p + '_peak'])) %></td>
+<td><%= format(rangeValue(columnas[p + '_root'])) %></td>
+
+<% }) %>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+</body>
+
+</html>
