@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listado de Partes</title>
+
+    <style>
+
+        body{
+            font-family: Arial, sans-serif;
+            background:#f5f5f5;
+            margin:20px;
+        }
+
+        h2{
+            color:#333;
+        }
+
+        #buscador{
+            width:100%;
+            max-width:400px;
+            padding:10px;
+            margin-bottom:20px;
+            border:1px solid #ccc;
+            border-radius:5px;
+            font-size:16px;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            background:white;
+        }
+
+        th, td{
+            border:1px solid #ddd;
+            padding:10px;
+            text-align:left;
+        }
+
+        th{
+            background:#007bff;
+            color:white;
+        }
+
+        tr:nth-child(even){
+            background:#f2f2f2;
+        }
+
+        tr:hover{
+            background:#ddd;
+        }
+
+    </style>
+
+</head>
+<body>
+
+    <h2>Listado de Partes</h2>
+
+    <!-- Buscador -->
+    <input 
+        type="text" 
+        id="buscador" 
+        placeholder="Buscar índice, número parte o aplicación..."
+    >
+
+    <table id="tablaPartes">
+
+        <thead>
+            <tr>
+                <th>Índice</th>
+                <th>Número Parte</th>
+                <th>Aplicación</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            <% if(par && par.length > 0){ %>
+
+                <% par.forEach((item) => { %>
+
+                    <tr>
+
+                        <!-- Índice -->
+                        <td>
+                            <%= item.pa5 %>
+                        </td>
+
+                        <!-- Número Parte -->
+                        <td>
+                            <%= item.pa6 %>
+                        </td>
+
+                        <!-- Aplicación -->
+                        <td>
+                            <%= item.pa8 %>
+                        </td>
+
+                    </tr>
+
+                <% }) %>
+
+            <% } else { %>
+
+                <tr>
+                    <td colspan="3">
+                        No hay registros
+                    </td>
+                </tr>
+
+            <% } %>
+
+        </tbody>
+
+    </table>
+
+    <script>
+
+        const buscador = document.getElementById('buscador');
+
+        buscador.addEventListener('keyup', function(){
+
+            const filtro = buscador.value.toLowerCase();
+
+            const filas = document.querySelectorAll('#tablaPartes tbody tr');
+
+            filas.forEach(fila => {
+
+                const texto = fila.textContent.toLowerCase();
+
+                if(texto.includes(filtro)){
+                    fila.style.display = '';
+                }else{
+                    fila.style.display = 'none';
+                }
+
+            });
+
+        });
+
+    </script>
+
+</body>
+</html>

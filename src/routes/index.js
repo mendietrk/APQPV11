@@ -3970,5 +3970,29 @@ router.post('/debug/save/:id', async (req, res) => {
 
 });
 
+// Ruta para mostrar ind.ejs
+
+router.get('/ind', async (req, res) => {
+
+    try {
+
+        const par = await Par.find({})
+            .collation({ locale: "en_US", numericOrdering: true })
+            .sort({ pa5: 1 });
+
+        res.render('ind', {
+            par
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).send('Error al cargar información');
+
+    }
+
+});
+
 // Exports
 module.exports = router
