@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Resumen por Número de Parte</title>
+
+<style>
+
+body{
+  font-family: Arial;
+  margin:20px;
+}
+
+table{
+  border-collapse:collapse;
+  width:600px;
+}
+
+th, td{
+  border:1px solid #ccc;
+  padding:8px;
+  text-align:center;
+}
+
+th{
+  background:#efefef;
+}
+
+.total{
+  font-weight:bold;
+  background:#f5f5f5;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Resumen de Registros por Número de Parte</h1>
+
+<table>
+
+  <thead>
+
+    <tr>
+
+      <th>Número de Parte</th>
+
+      <th>Registros</th>
+
+    </tr>
+
+  </thead>
+
+  <tbody>
+
+    <% partes.forEach(parte => { %>
+
+      <tr>
+
+        <td>
+          <%= parte %>
+        </td>
+
+        <td>
+          <%= resumen[parte] %>
+        </td>
+
+      </tr>
+
+    <% }) %>
+
+    <tr class="total">
+
+      <td>
+        TOTAL</td>
+
+      <td>
+        <%= total %>
+      </td>
+
+    </tr>
+
+  </tbody>
+
+</table>
+
+</body>
+
+</html>

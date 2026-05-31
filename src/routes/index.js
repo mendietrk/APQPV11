@@ -3994,5 +3994,52 @@ router.get('/ind', async (req, res) => {
 
 });
 
+router.get('/sum', async (req, res) => {
+
+  try {
+
+    const mediciones = await Medicion.find(
+      {},
+      { numeroParte: 1 }
+    );
+
+    const resumen = {};
+
+    mediciones.forEach(item => {
+
+      const parte =
+        item.numeroParte || 'SIN_PARTE';
+
+      if(!resumen[parte]){
+
+        resumen[parte] = 0;
+
+      }
+
+      resumen[parte]++;
+
+    });
+
+    const partes = Object.keys(resumen)
+      .sort((a, b) => resumen[b] - resumen[a]);
+
+    res.render('sum', {
+
+      resumen,
+      partes,
+      total: mediciones.length
+
+    });
+
+  } catch(error){
+
+    console.error(error);
+
+    res.status(500).send(error.message);
+
+  }
+
+});
+
 // Exports
 module.exports = router
