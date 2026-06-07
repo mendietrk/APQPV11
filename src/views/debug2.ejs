@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Debug2</title>
+
+<style>
+
+body{
+    background:#121212;
+    color:#ffffff;
+    font-family:Arial,sans-serif;
+    margin:15px;
+}
+
+h2{
+    color:#00e5ff;
+}
+
+.controls{
+    margin-bottom:15px;
+}
+
+input{
+    background:#2b2b2b;
+    color:white;
+    border:1px solid #555;
+    padding:8px;
+}
+
+button{
+    background:#00c853;
+    color:white;
+    border:none;
+    padding:8px 12px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+button:hover{
+    background:#00e676;
+}
+
+.scroll{
+
+    overflow-x:auto;
+    overflow-y:auto;
+
+    max-height:80vh;
+
+    border:1px solid #444;
+}
+
+table{
+
+    border-collapse:collapse;
+    white-space:nowrap;
+
+}
+
+th{
+
+    background:#1f1f1f;
+
+    color:#00e5ff;
+
+    position:sticky;
+
+    top:0;
+
+    z-index:3;
+
+}
+
+th,td{
+
+    border:1px solid #444;
+
+    padding:4px;
+
+    font-size:11px;
+
+}
+
+tr:nth-child(even){
+
+    background:#1a1a1a;
+
+}
+
+tr:nth-child(odd){
+
+    background:#242424;
+
+}
+
+.btn{
+
+    background:#2196f3;
+
+    color:white;
+
+    padding:4px 8px;
+
+    text-decoration:none;
+
+    border-radius:4px;
+
+    font-weight:bold;
+
+}
+
+.btn:hover{
+
+    background:#42a5f5;
+
+}
+
+/* COLUMNAS FIJAS */
+
+.col-editar{
+
+    position:sticky;
+
+    left:0;
+
+    background:#1f1f1f;
+
+    z-index:5;
+
+    min-width:80px;
+
+}
+
+.col-fecha{
+
+    position:sticky;
+
+    left:80px;
+
+    background:#1f1f1f;
+
+    z-index:5;
+
+    min-width:170px;
+
+}
+
+.col-parte{
+
+    position:sticky;
+
+    left:250px;
+
+    background:#1f1f1f;
+
+    z-index:5;
+
+    min-width:120px;
+
+}
+
+thead .col-editar,
+thead .col-fecha,
+thead .col-parte{
+
+    background:#2b2b2b;
+
+    color:#00e5ff;
+
+    z-index:10;
+
+}
+
+tbody .col-editar,
+tbody .col-fecha,
+tbody .col-parte{
+
+    background:#1f1f1f;
+
+    color:white;
+
+}
+
+a{
+
+    color:#00e5ff;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>Debug de Capturas</h2>
+
+<div class="controls">
+
+<form method="GET">
+
+<input
+type="text"
+name="numeroParte"
+value="<%= numeroParte %>"
+placeholder="Número de Parte">
+
+<button type="submit">
+
+Buscar
+
+</button>
+
+</form>
+
+</div>
+
+<div class="scroll">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th class="col-editar">Editar</th>
+<th class="col-fecha">Fecha</th>
+<th class="col-parte">NumeroParte</th>
+
+<th>Peso</th>
+
+<th>CRP_A</th>
+<th>CRP_B</th>
+<th>CRP_C</th>
+
+<th>RP_A</th>
+<th>RP_B</th>
+<th>RP_C</th>
+
+<%
+
+const puntos = [
+'p1','p2','p3','p4','p5',
+'p6','p7','p8','p9','p10',
+'p4_2'
+];
+
+puntos.forEach(function(p){
+
+['peak','root'].forEach(function(tipo){
+
+['A','B','C'].forEach(function(letra){
+
+%>
+
+<th>
+
+<%= p %>*<%= tipo %>*<%= letra %>
+
+</th>
+
+<%
+
+});
+
+});
+
+});
+
+%>
+
+<th>D1_A</th>
+<th>D1_B</th>
+<th>D1_C</th>
+
+<th>D2_A</th>
+<th>D2_B</th>
+<th>D2_C</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<%
+
+mediciones.forEach(function(m){
+
+%>
+
+<tr>
+
+<td class="col-editar">
+
+<a
+class="btn"
+href="/debugedit/<%= m._id %>">
+
+Editar
+
+</a>
+
+</td>
+
+<td class="col-fecha">
+
+<%= new Date(m.createdAt)
+.toLocaleString() %>
+
+</td>
+
+<td class="col-parte">
+
+<%= m.numeroParte || '' %>
+
+</td>
+
+<td>
+
+<%= m.peso || '' %>
+
+</td>
+
+<td><%= m.mediciones?.caliper_r_pequena?.A || '' %></td>
+<td><%= m.mediciones?.caliper_r_pequena?.B || '' %></td>
+<td><%= m.mediciones?.caliper_r_pequena?.C || '' %></td>
+
+<td><%= m.mediciones?.r_pequena?.A || '' %></td>
+<td><%= m.mediciones?.r_pequena?.B || '' %></td>
+<td><%= m.mediciones?.r_pequena?.C || '' %></td>
+
+<%
+
+puntos.forEach(function(p){
+
+['peak','root'].forEach(function(tipo){
+
+['A','B','C'].forEach(function(letra){
+
+%>
+
+<td>
+
+<%= (
+m.mediciones &&
+m.mediciones.puntos &&
+m.mediciones.puntos[p] &&
+m.mediciones.puntos[p][tipo]
+)
+?
+m.mediciones.puntos[p][tipo][letra]
+:
+''
+%>
+
+</td>
+
+<%
+
+});
+
+});
+
+});
+
+%>
+
+<td><%= m.mediciones?.grandeD1?.A || '' %></td>
+<td><%= m.mediciones?.grandeD1?.B || '' %></td>
+<td><%= m.mediciones?.grandeD1?.C || '' %></td>
+
+<td><%= m.mediciones?.grandeD2?.A || '' %></td>
+<td><%= m.mediciones?.grandeD2?.B || '' %></td>
+<td><%= m.mediciones?.grandeD2?.C || '' %></td>
+
+</tr>
+
+<%
+
+});
+
+%>
+
+</tbody>
+
+</table>
+
+</div>
+
+<br>
+
+<% if(page > 1){ %>
+
+<a
+href="?page=<%= page-1 %>&numeroParte=<%= numeroParte %>">
+
+← Anterior
+
+</a>
+
+<% } %>
+
+  
+
+Página <%= page %> de <%= totalPages %>
+
+  
+
+<% if(page < totalPages){ %>
+
+<a
+href="?page=<%= page+1 %>&numeroParte=<%= numeroParte %>">
+
+Siguiente →
+
+</a>
+
+<% } %>
+
+</body>
+
+</html>

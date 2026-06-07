@@ -4041,5 +4041,331 @@ router.get('/sum', async (req, res) => {
 
 });
 
+router.get('/debug2', async (req, res) => {
+
+  try {
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = 20;
+
+    const numeroParte = req.query.numeroParte || '';
+
+    let filtro = {};
+
+    if (numeroParte.trim()) {
+
+      filtro.numeroParte = {
+        $regex: numeroParte,
+        $options: 'i'
+      };
+
+    }
+
+    const total = await Medicion.countDocuments(filtro);
+
+    const mediciones = await Medicion.find(filtro)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    res.render('debug2', {
+      mediciones,
+      page,
+      totalPages: Math.ceil(total / limit),
+      numeroParte
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).send(err.message);
+
+  }
+
+});
+
+router.get('/debugedit/:id', async (req, res) => {
+
+  try {
+
+    const medicion = await Medicion
+      .findById(req.params.id)
+      .lean();
+
+    if (!medicion) {
+
+      return res
+        .status(404)
+        .send('Registro no encontrado');
+
+    }
+
+    res.render('debugedit', {
+      medicion
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).send(err.message);
+
+  }
+
+});
+
+router.post('/debugedit/:id', async (req, res) => {
+
+try {
+
+    const body = req.body;
+
+    function convertir(valor) {
+
+        if (
+            valor === undefined ||
+            valor === null ||
+            valor === ''
+        ) {
+            return null;
+        }
+
+        const numero = Number(valor);
+
+        if (!isNaN(numero)) {
+            return numero;
+        }
+
+        return valor;
+
+    }
+
+    const mediciones = {};
+
+    // -----------------------
+    // Caliper R Pequeña
+    // -----------------------
+
+    const caliper = {};
+
+    ['A','B','C'].forEach(function(letra){
+
+        const valor =
+            convertir(
+                body['caliper_r_pequena_' + letra]
+            );
+
+        if (valor !== null) {
+            caliper[letra] = valor;
+        }
+
+    });
+
+    if (Object.keys(caliper).length > 0) {
+
+        mediciones.caliper_r_pequena =
+            caliper;
+
+    }
+
+    // -----------------------
+    // R Pequeña
+    // -----------------------
+
+    const rPequena = {};
+
+    ['A','B','C'].forEach(function(letra){
+
+        const valor =
+            convertir(
+                body['r_pequena_' + letra]
+            );
+
+        if (valor !== null) {
+            rPequena[letra] = valor;
+        }
+
+    });
+
+    if (Object.keys(rPequena).length > 0) {
+
+        mediciones.r_pequena =
+            rPequena;
+
+    }
+
+    // -----------------------
+    // Grande D1
+    // -----------------------
+
+    const grandeD1 = {};
+
+    ['A','B','C'].forEach(function(letra){
+
+        const valor =
+            convertir(
+                body['grandeD1_' + letra]
+            );
+
+        if (valor !== null) {
+            grandeD1[letra] = valor;
+        }
+
+    });
+
+    if (Object.keys(grandeD1).length > 0) {
+
+        mediciones.grandeD1 =
+            grandeD1;
+
+    }
+
+    // -----------------------
+    // Grande D2
+    // -----------------------
+
+    const grandeD2 = {};
+
+    ['A','B','C'].forEach(function(letra){
+
+        const valor =
+            convertir(
+                body['grandeD2_' + letra]
+            );
+
+        if (valor !== null) {
+            grandeD2[letra] = valor;
+        }
+
+    });
+
+    if (Object.keys(grandeD2).length > 0) {
+
+        mediciones.grandeD2 =
+            grandeD2;
+
+    }
+
+    // -----------------------
+    // Puntos dinámicos
+    // -----------------------
+
+    const puntos = {};
+
+    Object.keys(body).forEach(function(campo){
+
+        if (
+            campo.indexOf('punto_') !== 0
+        ) {
+            return;
+        }
+
+        const partes =
+            campo.split('_');
+
+        if (partes.length < 4) {
+            return;
+        }
+
+        const punto =
+            partes[1];
+
+        const tipo =
+            partes[2];
+
+        const letra =
+            partes[3];
+
+        if (!puntos[punto]) {
+            puntos[punto] = {};
+        }
+
+        if (!puntos[punto][tipo]) {
+            puntos[punto][tipo] = {};
+        }
+
+        puntos[punto][tipo][letra] =
+            convertir(body[campo]);
+
+    });
+
+    if (
+        Object.keys(puntos).length > 0
+    ) {
+
+        mediciones.puntos =
+            puntos;
+
+    }
+
+    // -----------------------
+    // Actualizar Mongo
+    // -----------------------
+
+    await Medicion.findByIdAndUpdate(
+
+        req.params.id,
+
+        {
+
+            numeroParte:
+                body.numeroParte,
+
+            peso:
+                convertir(body.peso),
+
+            mediciones:
+                mediciones
+
+        },
+
+        {
+            new: true
+        }
+
+    );
+
+    res.redirect('/debug2');
+
+}
+catch(err){
+
+    console.error(err);
+
+    res.status(500)
+        .send(err.message);
+
+}
+
+});
+
+router.post('/debugdelete/:id', async (req,res)=>{
+
+
+try{
+
+    await Medicion.findByIdAndDelete(
+        req.params.id
+    );
+
+    res.redirect('/debug2');
+
+}
+catch(err){
+
+    console.error(err);
+
+    res.status(500)
+    .send(err.message);
+
+}
+
+
+});
+
+
+
 // Exports
 module.exports = router

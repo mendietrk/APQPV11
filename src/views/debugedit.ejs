@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Debug Edit</title>
+
+<style>
+
+body{
+    background:#121212;
+    color:#ffffff;
+    font-family:Arial,sans-serif;
+    margin:20px;
+}
+
+h1{
+    color:#00e5ff;
+}
+
+h2{
+    background:#1f1f1f;
+    color:#00e5ff;
+    padding:10px;
+    border-left:4px solid #00e5ff;
+}
+
+h3{
+    color:#ffd54f;
+}
+
+.seccion{
+    background:#1a1a1a;
+    border:1px solid #333;
+    border-radius:6px;
+    padding:15px;
+    margin-bottom:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;
+}
+
+.campo{
+    display:flex;
+    flex-direction:column;
+}
+
+label{
+    color:#ffffff;
+    font-size:12px;
+    font-weight:bold;
+    margin-bottom:4px;
+}
+
+input{
+    background:#2b2b2b;
+    color:#ffffff;
+    border:1px solid #555;
+    border-radius:4px;
+    padding:8px;
+}
+
+input:focus{
+    outline:none;
+    border-color:#00e5ff;
+    box-shadow:0 0 5px #00e5ff;
+}
+
+.botonera{
+    margin-top:25px;
+}
+
+.btnGuardar{
+
+    background:#00c853;
+    color:white;
+    border:none;
+    border-radius:4px;
+    padding:12px 20px;
+    cursor:pointer;
+    font-weight:bold;
+
+}
+
+.btnGuardar:hover{
+
+    background:#00e676;
+
+}
+
+.btnEliminar{
+
+    background:#d50000;
+    color:white;
+    border:none;
+    border-radius:4px;
+    padding:12px 20px;
+    cursor:pointer;
+    font-weight:bold;
+    margin-left:10px;
+
+}
+
+.btnEliminar:hover{
+
+    background:#ff1744;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<%
+
+const md = medicion.mediciones || {};
+
+%>
+
+<h1>Editar Registro</h1>
+
+<form method="POST">
+
+<div class="seccion">
+
+<h2>Datos Generales</h2>
+
+<div class="grid">
+
+<div class="campo">
+
+<label>Número Parte</label>
+
+<input
+type="text"
+name="numeroParte"
+value="<%= medicion.numeroParte || '' %>">
+
+</div>
+
+<div class="campo">
+
+<label>Peso</label>
+
+<input
+type="text"
+name="peso"
+value="<%= medicion.peso || '' %>">
+
+</div>
+
+</div>
+
+</div>
+
+<% if(md.caliper_r_pequena){ %>
+
+<div class="seccion">
+
+<h2>Caliper R Pequeña</h2>
+
+<div class="grid">
+
+<% Object.keys(md.caliper_r_pequena).forEach(function(k){ %>
+
+<div class="campo">
+
+<label><%= k %></label>
+
+<input
+type="text"
+name="caliper_r_pequena_<%= k %>"
+value="<%= md.caliper_r_pequena[k] %>">
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
+
+<% } %>
+
+<% if(md.r_pequena){ %>
+
+<div class="seccion">
+
+<h2>R Pequeña</h2>
+
+<div class="grid">
+
+<% Object.keys(md.r_pequena).forEach(function(k){ %>
+
+<div class="campo">
+
+<label><%= k %></label>
+
+<input
+type="text"
+name="r_pequena_<%= k %>"
+value="<%= md.r_pequena[k] %>">
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
+
+<% } %>
+
+<%
+const puntos = md.puntos || {};
+%>
+
+<% Object.keys(puntos).forEach(function(nombrePunto){ %>
+
+<div class="seccion">
+
+<h2><%= nombrePunto.toUpperCase() %></h2>
+
+<%
+const punto = puntos[nombrePunto];
+%>
+
+<% Object.keys(punto).forEach(function(tipo){ %>
+
+<h3><%= tipo.toUpperCase() %></h3>
+
+<div class="grid">
+
+<%
+
+const datos = punto[tipo];
+
+Object.keys(datos).forEach(function(letra){
+
+%>
+
+<div class="campo">
+
+<label><%= letra %></label>
+
+<input
+type="text"
+name="punto_<%= nombrePunto %>_<%= tipo %>_<%= letra %>"
+value="<%= datos[letra] %>">
+
+</div>
+
+<% }) %>
+
+</div>
+
+<% }) %>
+
+</div>
+
+<% }) %>
+
+<% if(md.grandeD1){ %>
+
+<div class="seccion">
+
+<h2>Grande D1</h2>
+
+<div class="grid">
+
+<% Object.keys(md.grandeD1).forEach(function(k){ %>
+
+<div class="campo">
+
+<label><%= k %></label>
+
+<input
+type="text"
+name="grandeD1_<%= k %>"
+value="<%= md.grandeD1[k] %>">
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
+
+<% } %>
+
+<% if(md.grandeD2){ %>
+
+<div class="seccion">
+
+<h2>Grande D2</h2>
+
+<div class="grid">
+
+<% Object.keys(md.grandeD2).forEach(function(k){ %>
+
+<div class="campo">
+
+<label><%= k %></label>
+
+<input
+type="text"
+name="grandeD2_<%= k %>"
+value="<%= md.grandeD2[k] %>">
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
+
+<% } %>
+
+<div class="botonera">
+
+<button
+type="submit"
+class="btnGuardar">
+
+Guardar Cambios
+
+</button>
+
+<button
+type="button"
+class="btnEliminar"
+onclick="confirmarBorrado()">
+
+Eliminar Registro
+
+</button>
+
+</div>
+
+</form>
+
+<form
+id="deleteForm"
+method="POST"
+action="/debugdelete/<%= medicion._id %>">
+
+</form>
+
+<script>
+
+function confirmarBorrado(){
+
+    if(
+        confirm(
+            'ATENCIÓN\n\n' +
+            'El registro será eliminado permanentemente.\n\n' +
+            'Esta acción no se puede deshacer.\n\n' +
+            '¿Continuar?'
+        )
+    ){
+
+        document
+        .getElementById('deleteForm')
+        .submit();
+
+    }
+
+}
+
+</script>
+
+</body>
+
+</html>
+
