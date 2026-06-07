@@ -4365,7 +4365,9 @@ catch(err){
 
 });
 
-
+router.get('/video', (req, res) => {
+    res.render('video');
+});
 
 // Exports
 module.exports = router
