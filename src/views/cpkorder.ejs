@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= typeof title !== 'undefined' ? title : 'CPK Order' %></title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1d2330;
+      --muted: #6b7385;
+      --border: #d9dde5;
+      --accent: #2c5fd8;
+      --low-bg: #d8f0dc;      /* <= media */
+      --low-bd: #5fb36d;
+      --low-tx: #1e5a2a;
+      --high-bg: #fbdcd0;     /* > media */
+      --high-bd: #e0825f;
+      --high-tx: #7a2d12;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #14171d; --card: #1d222b; --text: #e8ebf1; --muted: #9aa3b5;
+        --border: #333a48; --accent: #6f95f0;
+        --low-bg: #1f3d26; --low-bd: #4a9a5a; --low-tx: #b8e8c1;
+        --high-bg: #4a2618; --high-bd: #c9704f; --high-tx: #f6c9b6;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    p.sub { margin: 0 0 18px; color: var(--muted); font-size: .92rem; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px; margin-bottom: 16px;
+    }
+    textarea {
+      width: 100%; min-height: 110px; resize: vertical; padding: 10px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text); font: 14px ui-monospace, Consolas, monospace;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+    button {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); font-size: .9rem; cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .msg { font-size: .85rem; color: var(--muted); }
+    .msg.err { color: #d33; }
+    .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+    .stat {
+      flex: 1 1 130px; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 8px; background: var(--bg);
+    }
+    .stat small { display: block; color: var(--muted); font-size: .75rem; }
+    .stat b { font-size: 1.15rem; }
+    .legend { display: flex; gap: 16px; font-size: .85rem; margin-bottom: 12px; flex-wrap: wrap; }
+    .legend span::before {
+      content: ""; display: inline-block; width: 12px; height: 12px;
+      border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid;
+    }
+    .legend .l::before { background: var(--low-bg); border-color: var(--low-bd); }
+    .legend .h::before { background: var(--high-bg); border-color: var(--high-bd); }
+    #grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px;
+    }
+    .item {
+      position: relative; padding: 14px 6px 8px; text-align: center; border-radius: 8px;
+      border: 1.5px solid; cursor: grab; user-select: none; font-variant-numeric: tabular-nums;
+      font-size: .95rem; transition: transform .08s;
+    }
+    .item:active { cursor: grabbing; }
+    .item .n {
+      position: absolute; top: 2px; left: 6px; font-size: .62rem; opacity: .65;
+    }
+    .item.low  { background: var(--low-bg);  border-color: var(--low-bd);  color: var(--low-tx); }
+    .item.high { background: var(--high-bg); border-color: var(--high-bd); color: var(--high-tx); }
+    .item.dragging { opacity: .35; }
+    .item.over-before { box-shadow: -4px 0 0 0 var(--accent); }
+    .item.over-after  { box-shadow:  4px 0 0 0 var(--accent); }
+    label.opt { font-size: .85rem; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CPK Order</h1>
+  <p class="sub">Pega los datos desde Excel, revisa la media, reordena arrastrando y copia el resultado.</p>
+
+  <!-- 1. Entrada -->
+  <div class="card">
+    <label for="input"><b>1. Pegar datos de Excel</b> (una columna, una fila o un rango)</label>
+    <textarea id="input" placeholder="Pega aquí los 125 valores (Ctrl+V)..."></textarea>
+    <div class="row">
+      <button class="primary" id="btnLoad">Cargar datos</button>
+      <button id="btnClear">Limpiar</button>
+      <span id="loadMsg" class="msg"></span>
+    </div>
+  </div>
+
+  <!-- 2. Resultados -->
+  <div id="results" class="hidden">
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><small>Datos</small><b id="sCount">-</b></div>
+        <div class="stat"><small>Media</small><b id="sMean">-</b></div>
+        <div class="stat"><small>≤ media</small><b id="sLow">-</b></div>
+        <div class="stat"><small>&gt; media</small><b id="sHigh">-</b></div>
+        <div class="stat"><small>Mínimo</small><b id="sMin">-</b></div>
+        <div class="stat"><small>Máximo</small><b id="sMax">-</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <b>2. Reordenar</b> <span class="msg">(arrastra cada dato con el mouse a su nueva posición)</span>
+      <div class="legend" style="margin-top:10px">
+        <span class="l">Igual o por debajo de la media</span>
+        <span class="h">Mayor que la media</span>
+      </div>
+      <div id="grid"></div>
+      <div class="row">
+        <button id="btnAsc">Ordenar ascendente</button>
+        <button id="btnDesc">Ordenar descendente</button>
+        <button id="btnReset">Restaurar orden original</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <b>3. Copiar para pegar en Excel</b>
+      <div class="row">
+        <button class="primary" id="btnCopyCol">Copiar como columna</button>
+        <button id="btnCopyRow">Copiar como fila</button>
+        <label class="opt"><input type="checkbox" id="optComma"> Usar coma decimal</label>
+        <span id="copyMsg" class="msg"></span>
+      </div>
+      <textarea id="output" readonly style="margin-top:10px; min-height:80px"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var MAX_ITEMS = 125;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var input = $('input'), grid = $('grid'), output = $('output');
+
+  var original = [];  // [{id, raw, val}]
+  var items = [];     // orden actual
+  var mean = 0;
+  var dragIndex = null;
+
+  // ---------- Parseo ----------
+  function parseNumber(token) {
+    var t = token.trim().replace(/\s/g, '');
+    if (t === '') return NaN;
+    // Si tiene coma y no punto, se asume coma decimal (Excel en español)
+    if (t.indexOf(',') !== -1 && t.indexOf('.') === -1) t = t.replace(',', '.');
+    // Si tiene ambos, la coma se toma como separador de miles
+    else if (t.indexOf(',') !== -1 && t.indexOf('.') !== -1) t = t.replace(/,/g, '');
+    return /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(t) ? parseFloat(t) : NaN;
+  }
+
+  function loadData() {
+    var tokens = input.value.split(/[\t\r\n;]+/);
+    var list = [], bad = 0;
+    tokens.forEach(function (tk) {
+      if (tk.trim() === '') return;
+      var v = parseNumber(tk);
+      if (isNaN(v)) { bad++; return; }
+      list.push({ id: list.length, raw: tk.trim(), val: v });
+    });
+
+    var msg = $('loadMsg');
+    msg.className = 'msg';
+    if (!list.length) {
+      msg.className = 'msg err';
+      msg.textContent = 'No se encontraron números válidos.';
+      $('results').classList.add('hidden');
+      return;
+    }
+
+    var notes = [];
+    if (list.length > MAX_ITEMS) {
+      notes.push('Se recibieron ' + list.length + ' datos; solo se usarán los primeros ' + MAX_ITEMS + '.');
+      list = list.slice(0, MAX_ITEMS);
+    } else if (list.length < MAX_ITEMS) {
+      notes.push('Se esperaban ' + MAX_ITEMS + ' datos y se recibieron ' + list.length + '.');
+    }
+    if (bad) notes.push(bad + ' valor(es) no numérico(s) ignorado(s).');
+    msg.textContent = notes.length ? notes.join(' ') : 'Datos cargados correctamente.';
+    if (notes.length) msg.className = 'msg err';
+
+    original = list;
+    items = list.slice();
+    mean = list.reduce(function (s, x) { return s + x.val; }, 0) / list.length;
+
+    updateStats();
+    render();
+    $('results').classList.remove('hidden');
+  }
+
+  // ---------- Estadísticas ----------
+  function fmt(n) {
+    return (Math.round(n * 10000) / 10000).toString();
+  }
+
+  function updateStats() {
+    var vals = original.map(function (x) { return x.val; });
+    var low = vals.filter(function (v) { return v <= mean; }).length;
+    $('sCount').textContent = vals.length;
+    $('sMean').textContent = fmt(mean);
+    $('sLow').textContent = low;
+    $('sHigh').textContent = vals.length - low;
+    $('sMin').textContent = fmt(Math.min.apply(null, vals));
+    $('sMax').textContent = fmt(Math.max.apply(null, vals));
+  }
+
+  // ---------- Render ----------
+  function render() {
+    grid.innerHTML = '';
+    items.forEach(function (it, i) {
+      var el = document.createElement('div');
+      el.className = 'item ' + (it.val <= mean ? 'low' : 'high');
+      el.draggable = true;
+      el.dataset.index = i;
+      el.title = it.val <= mean ? '≤ media' : '> media';
+      el.innerHTML = '<span class="n">' + (i + 1) + '</span>' + escapeHtml(it.raw);
+      grid.appendChild(el);
+    });
+    updateOutput();
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  // ---------- Drag & drop ----------
+  function clearMarks() {
+    grid.querySelectorAll('.over-before, .over-after, .dragging').forEach(function (e) {
+      e.classList.remove('over-before', 'over-after', 'dragging');
+    });
+  }
+
+  function dropSide(el, e) {
+    var r = el.getBoundingClientRect();
+    return (e.clientX - r.left) < r.width / 2 ? 'before' : 'after';
+  }
+
+  grid.addEventListener('dragstart', function (e) {
+    var el = e.target.closest('.item');
+    if (!el) return;
+    dragIndex = parseInt(el.dataset.index, 10);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(dragIndex)); // requerido por Firefox
+    setTimeout(function () { el.classList.add('dragging'); }, 0);
+  });
+
+  grid.addEventListener('dragover', function (e) {
+    if (dragIndex === null) return;
+    var el = e.target.closest('.item');
+    if (!el) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    grid.querySelectorAll('.over-before, .over-after').forEach(function (x) {
+      x.classList.remove('over-before', 'over-after');
+    });
+    el.classList.add('over-' + dropSide(el, e));
+  });
+
+  grid.addEventListener('drop', function (e) {
+    if (dragIndex === null) return;
+    var el = e.target.closest('.item');
+    if (!el) return;
+    e.preventDefault();
+
+    var target = parseInt(el.dataset.index, 10);
+    var side = dropSide(el, e);
+    var moved = items.splice(dragIndex, 1)[0];
+    if (dragIndex < target) target--;          // el índice cambió al quitar el elemento
+    if (side === 'after') target++;
+    items.splice(target, 0, moved);
+
+    dragIndex = null;
+    render();
+  });
+
+  grid.addEventListener('dragend', function () {
+    dragIndex = null;
+    clearMarks();
+  });
+
+  // ---------- Salida / copiar ----------
+  function outputText(asRow) {
+    var useComma = $('optComma').checked;
+    var vals = items.map(function (it) {
+      var s = it.raw;
+      // Normaliza el separador decimal según la opción elegida
+      if (useComma) s = s.replace('.', ',');
+      else if (s.indexOf(',') !== -1 && s.indexOf('.') === -1) s = s.replace(',', '.');
+      return s;
+    });
+    return vals.join(asRow ? '\t' : '\n');
+  }
+
+  function updateOutput() {
+    output.value = outputText(false);
+  }
+
+  function copyText(text, label) {
+    var msg = $('copyMsg');
+    function ok() { msg.className = 'msg'; msg.textContent = label + ' copiado. Pega en Excel con Ctrl+V.'; }
+    function fail() { msg.className = 'msg err'; msg.textContent = 'No se pudo copiar automáticamente; selecciona el texto de abajo y usa Ctrl+C.'; }
+
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy') ? ok() : fail(); } catch (err) { fail(); }
+      document.body.removeChild(ta);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(ok, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  // ---------- Eventos ----------
+  $('btnLoad').addEventListener('click', loadData);
+  input.addEventListener('paste', function () { setTimeout(loadData, 0); });
+
+  $('btnClear').addEventListener('click', function () {
+    input.value = ''; original = []; items = []; grid.innerHTML = ''; output.value = '';
+    $('loadMsg').textContent = ''; $('copyMsg').textContent = '';
+    $('results').classList.add('hidden');
+  });
+
+  $('btnAsc').addEventListener('click', function () {
+    items.sort(function (a, b) { return a.val - b.val; }); render();
+  });
+  $('btnDesc').addEventListener('click', function () {
+    items.sort(function (a, b) { return b.val - a.val; }); render();
+  });
+  $('btnReset').addEventListener('click', function () {
+    items = original.slice(); render();
+  });
+
+  $('btnCopyCol').addEventListener('click', function () { copyText(outputText(false), 'Columna'); });
+  $('btnCopyRow').addEventListener('click', function () { copyText(outputText(true), 'Fila'); });
+  $('optComma').addEventListener('change', updateOutput);
+})();
+</script>
+</body>
+</html>

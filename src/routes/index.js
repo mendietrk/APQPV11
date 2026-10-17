@@ -4369,5 +4369,9 @@ router.get('/video', (req, res) => {
     res.render('video');
 });
 
+router.get("/cpkorder", (req, res) => {
+    res.render("cpkorder");
+});
+
 // Exports
 module.exports = router
