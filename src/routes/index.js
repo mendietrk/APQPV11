@@ -4375,23 +4375,37 @@ router.get("/cpkorder", (req, res) => {
 
 const Journey = require("../models/journey");
 
-router.get("/journey", (req, res) => {
-    res.render("journey", { user: req.user, saveUrl: "/journey/guardar" });
+const clientIp = (req) => (req.ip || "").replace("::ffff:", "");
+
+router.get("/journey2", (req, res) => {
+    res.render("journey2", {
+        saveUrl: "/journey2/guardar",
+        ip: clientIp(req),
+        // Si ya tienes sesión, descomenta y ajusta estos campos:
+        // empleado: { numero: req.user.numero, nombre: req.user.name },
+    });
 });
 
-router.post("/journey/guardar", async (req, res) => {
+router.post("/journey2/guardar", async (req, res) => {
     try {
-        const { usuario, inicio, fin, actividades, cambios } = req.body;
+        const { numeroEmpleado, nombreEmpleado, inicio, fin,
+                ubicacionEntrada, ubicacionSalida, actividades, cambios } = req.body;
 
+        if (!numeroEmpleado || !nombreEmpleado) {
+            return res.status(400).json({ ok: false, error: "Faltan datos del empleado" });
+        }
         if (!inicio || !fin || new Date(fin) <= new Date(inicio)) {
             return res.status(400).json({ ok: false, error: "Fechas de jornada inválidas" });
         }
 
         const journey = await Journey.create({
-            // Si tienes sesión, el nombre se toma del servidor y no del navegador
-            usuario: (req.user && req.user.name) || usuario,
+            numeroEmpleado,
+            nombreEmpleado,
+            ip: clientIp(req),
             inicio,
             fin,
+            ubicacionEntrada,
+            ubicacionSalida,
             actividades,
             cambios,
         });

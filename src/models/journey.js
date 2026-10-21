@@ -19,9 +19,26 @@ const cambioSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Ubicación obtenida con el navegador (estado: ok, denegada, tiempo_agotado, no_disponible, no_obtenida)
+const ubicacionSchema = new mongoose.Schema(
+  {
+    estado: { type: String, default: "no_obtenida" },
+    lat: Number,
+    lng: Number,
+    precision: Number, // metros
+    fecha: Date,
+  },
+  { _id: false }
+);
+
 const journeySchema = new mongoose.Schema(
   {
-    usuario: { type: String, trim: true, default: "" },
+    usuario: { type: String, trim: true, default: "" }, // usado por journey.ejs
+    numeroEmpleado: { type: String, trim: true, maxlength: 20 },
+    nombreEmpleado: { type: String, trim: true, maxlength: 80 },
+    ip: { type: String, trim: true }, // la toma el servidor, no el navegador
+    ubicacionEntrada: { type: ubicacionSchema, default: undefined },
+    ubicacionSalida: { type: ubicacionSchema, default: undefined },
     inicio: { type: Date, required: true }, // checada de entrada
     fin: { type: Date, required: true }, // checada de salida
     totalMs: { type: Number, min: 0 }, // duración total de la jornada
@@ -41,5 +58,6 @@ journeySchema.pre("validate", function (next) {
 
 // Para consultar jornadas por usuario y fecha
 journeySchema.index({ usuario: 1, inicio: -1 });
+journeySchema.index({ numeroEmpleado: 1, inicio: -1 });
 
 module.exports = mongoose.model("Journey", journeySchema);
