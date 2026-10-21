@@ -4373,5 +4373,34 @@ router.get("/cpkorder", (req, res) => {
     res.render("cpkorder");
 });
 
+const Journey = require("../models/journey");
+
+router.get("/journey", (req, res) => {
+    res.render("journey", { user: req.user, saveUrl: "/journey/guardar" });
+});
+
+router.post("/journey/guardar", async (req, res) => {
+    try {
+        const { usuario, inicio, fin, actividades, cambios } = req.body;
+
+        if (!inicio || !fin || new Date(fin) <= new Date(inicio)) {
+            return res.status(400).json({ ok: false, error: "Fechas de jornada inválidas" });
+        }
+
+        const journey = await Journey.create({
+            // Si tienes sesión, el nombre se toma del servidor y no del navegador
+            usuario: (req.user && req.user.name) || usuario,
+            inicio,
+            fin,
+            actividades,
+            cambios,
+        });
+
+        res.status(201).json({ ok: true, id: journey._id });
+    } catch (err) {
+        res.status(400).json({ ok: false, error: err.message });
+    }
+});
+
 // Exports
 module.exports = router
