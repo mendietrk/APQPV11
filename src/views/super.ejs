@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supervisión de jornadas</title>
+  <style>
+    :root {
+      --bg: #eef1f4; --surface: #ffffff; --ink: #1b2430; --muted: #5d6b7b;
+      --line: #d3dae2; --run: #0f6e5b; --stop: #b3402f; --wash: #e3f1ed;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12171d; --surface: #1b222b; --ink: #e8edf2; --muted: #93a1b0;
+        --line: #2d3743; --run: #3fb89c; --stop: #e57b6a; --wash: #183a33;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--ink);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 900px; margin: 0 auto; display: grid; gap: 16px; }
+    h1 { font-size: 1.25rem; margin: 0 0 4px; }
+    p { margin: 0; color: var(--muted); }
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 20px; }
+    .num { font-variant-numeric: tabular-nums; }
+    .label { font-size: .875rem; color: var(--muted); }
+    button { font: inherit; cursor: pointer; color: inherit; }
+    :focus-visible { outline: 3px solid var(--run); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
+    .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
+    .err { color: var(--stop); font-size: .875rem; }
+
+    ul { list-style: none; margin: 0; padding: 0; }
+    .emp { border-top: 1px solid var(--line); }
+    .emp:first-child { border-top: 0; }
+    .emp-head {
+      display: grid; grid-template-columns: 80px minmax(140px, 1.4fr) minmax(120px, 1fr) 110px;
+      gap: 12px; align-items: center; padding: 12px 0; width: 100%;
+      background: none; border: 0; text-align: left;
+    }
+    .head-cols { display: grid; grid-template-columns: 80px minmax(140px, 1.4fr) minmax(120px, 1fr) 110px; gap: 12px; padding: 10px 0 6px; font-size: .8125rem; color: var(--muted); border-bottom: 1px solid var(--line); }
+    .emp-row { display: flex; align-items: center; gap: 8px; }
+    .emp-row .emp-head { flex: 1; min-width: 0; }
+    .btn-close, .btn-spacer { width: 76px; flex: none; }
+    .btn-close { padding: 6px 0; border-radius: 8px; border: 1px solid var(--stop); background: var(--surface); color: var(--stop); font-weight: 600; }
+    .head-cols { padding-right: 84px; }
+
+    dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); padding: 20px; max-width: 420px; width: calc(100% - 32px); }
+    dialog::backdrop { background: rgba(0, 0, 0, .5); }
+    dialog h2 { font-size: 1.0625rem; margin: 0 0 8px; }
+    dialog label { display: grid; gap: 4px; font-size: .875rem; color: var(--muted); margin: 12px 0 6px; }
+    dialog input { padding: 10px 12px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+    .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .btn-danger { background: var(--stop); border-color: var(--stop); color: #fff; }
+    .btn:disabled { opacity: .6; cursor: wait; }
+    @media (prefers-color-scheme: dark) { .btn-danger { color: #12171d; } }
+
+    .emp-name { font-weight: 600; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+    .emp-name::before { content: "▸ "; text-decoration: none; display: inline-block; }
+    .emp-head[aria-expanded=true] .emp-name::before { content: "▾ "; }
+    .state { display: inline-flex; align-items: center; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--run); flex: none; }
+    .dot.off { background: var(--muted); }
+    .detail { background: var(--wash); border-radius: 8px; padding: 12px 16px; margin: 0 0 12px; display: grid; gap: 8px; }
+    .detail h3 { font-size: .9375rem; margin: 0; }
+    .act-row { display: grid; gap: 4px; }
+    .act-top { display: flex; justify-content: space-between; gap: 12px; }
+    .bar { height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: var(--run); }
+    .total { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 8px; font-weight: 700; }
+    .empty { padding: 24px 0; }
+
+    @media (max-width: 640px) {
+      .head-cols { display: none; }
+      .emp-head { grid-template-columns: 1fr auto; row-gap: 2px; }
+      .emp-head .c-num { grid-column: 1; order: 1; font-size: .8125rem; color: var(--muted); }
+      .emp-head .c-name { grid-column: 1; order: 2; }
+      .emp-head .c-act { grid-column: 1; order: 3; }
+      .emp-head .c-time { grid-column: 2; grid-row: 1 / span 3; order: 4; text-align: right; }
+    }
+  </style>
+</head>
+<body
+  data-data-url="<%= typeof dataUrl !== 'undefined' ? dataUrl : '/super/data' %>"
+  data-close-url="<%= typeof closeUrl !== 'undefined' ? closeUrl : '/super/cerrar' %>">
+<main>
+  <header class="toolbar">
+    <div>
+      <h1>Supervisión de jornadas</h1>
+      <p id="summary">Cargando…</p>
+    </div>
+    <div>
+      <button type="button" class="btn" id="btn-refresh">Actualizar</button>
+      <div class="label num" id="updated" role="status"></div>
+    </div>
+  </header>
+
+  <section class="panel" aria-label="Lista de empleados">
+    <div class="head-cols" aria-hidden="true">
+      <span>No. empleado</span><span>Nombre</span><span>Actividad actual</span><span style="text-align:right">Tiempo en la actividad</span>
+    </div>
+    <ul id="list"></ul>
+    <p class="empty" id="empty" hidden>No hay jornadas registradas en las últimas 24 horas.</p>
+    <p class="err" id="error" role="alert" hidden></p>
+  </section>
+</main>
+
+<dialog id="dlg-close" aria-labelledby="dlg-title">
+  <form id="form-close" autocomplete="off">
+    <h2 id="dlg-title">Cerrar jornada abierta</h2>
+    <p id="dlg-who"></p>
+    <label>Hora de salida
+      <input type="datetime-local" id="dlg-time" step="60" required>
+    </label>
+    <p class="label">Se registrará como hora de salida. El tiempo de la actividad en curso se contará hasta esa hora.</p>
+    <p class="err" id="dlg-err" role="alert" hidden></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="dlg-cancel">Cancelar</button>
+      <button type="submit" class="btn btn-danger" id="dlg-ok">Cerrar jornada</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+
+  var POLL_MS = 5000;
+  var dataUrl = document.body.dataset.dataUrl;
+  var closeUrl = document.body.dataset.closeUrl;
+
+  var jornadas = [];
+  var offset = 0;            // diferencia entre el reloj del servidor y el de este equipo
+  var expanded = {};         // jornadas con el detalle abierto (se conserva al actualizar)
+  var loading = false;
+
+  function $(id) { return document.getElementById(id); }
+  function nowAdj() { return Date.now() + offset; }
+
+  function fmt(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return [h, m, sec].map(function (n) { return String(n).padStart(2, '0'); }).join(':');
+  }
+  function clock(ts) {
+    return new Date(ts).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Tiempo acumulado por actividad, sumando el tramo que sigue corriendo.
+  function totalsOf(j, at) {
+    var map = {};
+    (j.actividades || []).forEach(function (a) { map[a.nombre] = (map[a.nombre] || 0) + a.milisegundos; });
+    if (j.abierta && j.actividadActual && j.actividadDesde) {
+      map[j.actividadActual] = (map[j.actividadActual] || 0) + (at - new Date(j.actividadDesde).getTime());
+    }
+    return map;
+  }
+  function connMs(j, at) {
+    var end = j.abierta ? at : new Date(j.fin).getTime();
+    return end - new Date(j.inicio).getTime();
+  }
+
+  /* ---------- Datos ---------- */
+  function fetchData() {
+    if (loading) return;
+    loading = true;
+    var t0 = Date.now();
+    fetch(dataUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        var t1 = Date.now();
+        offset = data.serverNow - (t0 + t1) / 2;
+        jornadas = data.jornadas || [];
+        $('error').hidden = true;
+        $('updated').textContent = 'Actualizado a las ' + clock(Date.now());
+        renderList();
+      })
+      .catch(function () {
+        $('error').textContent = 'No se pudo actualizar. Se reintentará automáticamente; los datos mostrados pueden estar desactualizados.';
+        $('error').hidden = false;
+      })
+      .then(function () { loading = false; });
+  }
+
+  /* ---------- Dibujo ---------- */
+  function cell(cls, text) {
+    var d = document.createElement('span');
+    d.className = cls;
+    d.textContent = text;
+    return d;
+  }
+
+  function renderList() {
+    var list = $('list');
+    list.textContent = '';
+    var at = nowAdj();
+
+    var sorted = jornadas.slice().sort(function (a, b) {
+      if (a.abierta !== b.abierta) return a.abierta ? -1 : 1;
+      return String(a.numero).localeCompare(String(b.numero), 'es', { numeric: true });
+    });
+
+    var openCount = sorted.filter(function (j) { return j.abierta; }).length;
+    $('summary').textContent = openCount + ' conectado' + (openCount === 1 ? '' : 's') +
+      ' · ' + sorted.length + ' jornada' + (sorted.length === 1 ? '' : 's') + ' en las últimas 24 h';
+    $('empty').hidden = sorted.length > 0;
+
+    sorted.forEach(function (j) {
+      var li = document.createElement('li');
+      li.className = 'emp';
+
+      var head = document.createElement('button');
+      head.type = 'button';
+      head.className = 'emp-head';
+      head.setAttribute('aria-expanded', String(!!expanded[j.id]));
+      head.setAttribute('aria-controls', 'detail-' + j.id);
+      head.setAttribute('aria-label', 'Ver actividades de ' + j.nombre);
+
+      var act = document.createElement('span');
+      act.className = 'c-act state';
+      var dot = document.createElement('span');
+      dot.className = 'dot' + (j.abierta ? '' : ' off');
+      act.appendChild(dot);
+      act.appendChild(document.createTextNode(j.abierta ? (j.actividadActual || 'Sin asignar') : 'Salió a las ' + clock(j.fin) + (j.cierreManual ? ' (cierre manual)' : '')));
+
+      var cur = totalsOf(j, at)[j.actividadActual] || 0;
+      var time = cell('c-time num', j.abierta ? fmt(cur) : '—');
+      time.dataset.cur = j.id;
+
+      head.appendChild(cell('c-num num', j.numero));
+      head.appendChild(cell('c-name emp-name', j.nombre));
+      head.appendChild(act);
+      head.appendChild(time);
+      head.addEventListener('click', function () {
+        expanded[j.id] = !expanded[j.id];
+        renderList();
+        var again = document.querySelector('[aria-controls="detail-' + j.id + '"]');
+        if (again) again.focus();
+      });
+      var row = document.createElement('div');
+      row.className = 'emp-row';
+      row.appendChild(head);
+      if (j.abierta) {
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'btn-close';
+        closeBtn.textContent = 'Cerrar';
+        closeBtn.setAttribute('aria-label', 'Cerrar la jornada abierta de ' + j.nombre);
+        closeBtn.addEventListener('click', function () { openCloseDialog(j); });
+        row.appendChild(closeBtn);
+      } else {
+        var spacer = document.createElement('span');
+        spacer.className = 'btn-spacer';
+        spacer.setAttribute('aria-hidden', 'true');
+        row.appendChild(spacer);
+      }
+      li.appendChild(row);
+
+      if (expanded[j.id]) li.appendChild(buildDetail(j, at));
+      list.appendChild(li);
+    });
+  }
+
+  function buildDetail(j, at) {
+    var box = document.createElement('div');
+    box.className = 'detail';
+    box.id = 'detail-' + j.id;
+
+    var h = document.createElement('h3');
+    h.textContent = j.nombre + ' · No. ' + j.numero + ' · Entrada ' + clock(j.inicio);
+    box.appendChild(h);
+
+    var totals = totalsOf(j, at);
+    var conn = connMs(j, at);
+    var names = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a]; });
+
+    if (!names.length) {
+      var p = document.createElement('p');
+      p.textContent = 'Aún no hay actividades con tiempo registrado.';
+      box.appendChild(p);
+    }
+
+    names.forEach(function (name) {
+      var pct = conn > 0 ? Math.min(100, (totals[name] / conn) * 100) : 0;
+      var row = document.createElement('div');
+      row.className = 'act-row';
+
+      var top = document.createElement('div');
+      top.className = 'act-top';
+      var n = document.createElement('span');
+      n.textContent = name + (j.abierta && name === j.actividadActual ? ' (en curso)' : '');
+      var v = cell('num', fmt(totals[name]) + ' · ' + pct.toFixed(0) + '%');
+      v.dataset.act = j.id + '|' + name;
+      top.appendChild(n);
+      top.appendChild(v);
+
+      var bar = document.createElement('div');
+      bar.className = 'bar';
+      var fill = document.createElement('span');
+      fill.style.width = pct.toFixed(1) + '%';
+      bar.appendChild(fill);
+
+      row.appendChild(top);
+      row.appendChild(bar);
+      box.appendChild(row);
+    });
+
+    var tot = document.createElement('div');
+    tot.className = 'total';
+    tot.appendChild(cell('', j.abierta ? 'Tiempo total de conexión (en curso)' : 'Tiempo total de conexión'));
+    var tv = cell('num', fmt(conn));
+    tv.dataset.conn = j.id;
+    tot.appendChild(tv);
+    box.appendChild(tot);
+
+    return box;
+  }
+
+  // Cada segundo solo se actualizan los contadores de jornadas abiertas.
+  function tick() {
+    var at = nowAdj();
+    jornadas.forEach(function (j) {
+      if (!j.abierta) return;
+      var totals = totalsOf(j, at);
+      var cur = document.querySelector('[data-cur="' + j.id + '"]');
+      if (cur) cur.textContent = fmt(totals[j.actividadActual] || 0);
+      var conn = document.querySelector('[data-conn="' + j.id + '"]');
+      if (conn) conn.textContent = fmt(connMs(j, at));
+      var live = document.querySelector('[data-act="' + (j.id + '|' + j.actividadActual).replace(/"/g, '\\"') + '"]');
+      if (live) {
+        var c = connMs(j, at);
+        var ms = totals[j.actividadActual] || 0;
+        live.textContent = fmt(ms) + ' · ' + (c > 0 ? Math.min(100, (ms / c) * 100) : 0).toFixed(0) + '%';
+      }
+    });
+  }
+
+  /* ---------- Cerrar una jornada que quedó abierta ---------- */
+  var dlg = $('dlg-close');
+  var closing = null; // { id, nombre, desde }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function toLocalInput(ts) {
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function openCloseDialog(j) {
+    var desde = new Date(j.actividadDesde || j.inicio).getTime();
+    closing = { id: j.id, nombre: j.nombre, desde: desde };
+    $('dlg-who').textContent = j.nombre + ' (No. ' + j.numero + ') · Entrada ' + clock(j.inicio) +
+      ' · Actividad "' + (j.actividadActual || 'Sin asignar') + '" desde las ' + clock(desde) + '.';
+    var inp = $('dlg-time');
+    inp.min = toLocalInput(desde);
+    inp.max = toLocalInput(nowAdj());
+    inp.value = toLocalInput(nowAdj());
+    $('dlg-err').hidden = true;
+    $('dlg-ok').disabled = false;
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    inp.focus();
+  }
+
+  function closeDialog() {
+    closing = null;
+    if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+  }
+
+  $('form-close').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!closing) return;
+    var err = $('dlg-err');
+    function fail(t) { err.textContent = t; err.hidden = false; }
+
+    var v = $('dlg-time').value;
+    var fin = v ? new Date(v).getTime() : NaN;
+    if (isNaN(fin)) return fail('Elige la hora de salida.');
+    // El campo solo tiene precisión de minutos: se tolera hasta 1 minuto antes del inicio de la actividad.
+    if (fin < closing.desde && closing.desde - fin < 60000) fin = closing.desde;
+    if (fin < closing.desde) return fail('La hora de salida no puede ser anterior al inicio de la última actividad (' + clock(closing.desde) + ').');
+    if (fin > nowAdj() + 60000) return fail('La hora de salida no puede estar en el futuro.');
+
+    err.hidden = true;
+    $('dlg-ok').disabled = true;
+    fetch(closeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jornadaId: closing.id, fin: new Date(fin).toISOString() })
+    })
+      .then(function (res) {
+        if (res.ok) return;
+        return res.json().catch(function () { return {}; }).then(function (b) {
+          throw new Error('HTTP ' + res.status + (b && b.error ? ': ' + b.error : (res.status === 404 ? ': la ruta ' + closeUrl + ' no existe en el servidor' : '')));
+        });
+      })
+      .then(function () { closeDialog(); fetchData(); })
+      .catch(function (e2) {
+        $('dlg-ok').disabled = false;
+        fail(e2 && e2.name === 'TypeError' ? 'No se pudo contactar al servidor.' : e2.message);
+      });
+  });
+  $('dlg-cancel').addEventListener('click', closeDialog);
+
+  $('btn-refresh').addEventListener('click', fetchData);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) fetchData(); });
+
+  fetchData();
+  setInterval(function () { if (!document.hidden) fetchData(); }, POLL_MS);
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

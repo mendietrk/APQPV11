@@ -4377,44 +4377,147 @@ const Journey = require("../models/journey");
 
 const clientIp = (req) => (req.ip || "").replace("::ffff:", "");
 
-router.get("/journey2", (req, res) => {
-    res.render("journey2", {
-        saveUrl: "/journey2/guardar",
+router.get("/journey3", (req, res) => {
+    res.render("journey3", {
+        saveUrl: "/journey3/sync",
         ip: clientIp(req),
-        // Si ya tienes sesión, descomenta y ajusta estos campos:
-        // empleado: { numero: req.user.numero, nombre: req.user.name },
+        // Si ya tienes sesión: empleado: { numero: req.user.numero, nombre: req.user.name },
     });
 });
 
-router.post("/journey2/guardar", async (req, res) => {
+router.post("/journey3/sync", async (req, res) => {
     try {
-        const { numeroEmpleado, nombreEmpleado, inicio, fin,
-                ubicacionEntrada, ubicacionSalida, actividades, cambios } = req.body;
+        const b = req.body;
 
-        if (!numeroEmpleado || !nombreEmpleado) {
-            return res.status(400).json({ ok: false, error: "Faltan datos del empleado" });
+        if (!b.jornadaId || !b.numeroEmpleado || !b.nombreEmpleado || !b.inicio) {
+            return res.status(400).json({ ok: false, error: "Datos incompletos" });
         }
-        if (!inicio || !fin || new Date(fin) <= new Date(inicio)) {
-            return res.status(400).json({ ok: false, error: "Fechas de jornada inválidas" });
+        const abierta = b.abierta === true;
+        const inicio = new Date(b.inicio);
+        const fin = b.fin ? new Date(b.fin) : null;
+        if (isNaN(inicio) || (!abierta && (!fin || isNaN(fin) || fin <= inicio))) {
+            return res.status(400).json({ ok: false, error: "Fechas inválidas" });
         }
 
-        const journey = await Journey.create({
-            numeroEmpleado,
-            nombreEmpleado,
+        const datos = {
+            numeroEmpleado: b.numeroEmpleado,
+            nombreEmpleado: b.nombreEmpleado,
             ip: clientIp(req),
+            rev: Number(b.rev) || 0,
             inicio,
-            fin,
-            ubicacionEntrada,
-            ubicacionSalida,
-            actividades,
-            cambios,
-        });
+            fin: abierta ? null : fin,
+            abierta,
+            actividadActual: abierta ? b.actividadActual : null,
+            actividadDesde: abierta && b.actividadDesde ? new Date(b.actividadDesde) : null,
+            totalMs: abierta ? null : fin - inicio,
+            ubicacionEntrada: b.ubicacionEntrada,
+            ubicacionSalida: b.ubicacionSalida || undefined,
+            actividades: b.actividades,
+            cambios: b.cambios,
+        };
 
-        res.status(201).json({ ok: true, id: journey._id });
+        await Journey.findOneAndUpdate(
+            { jornadaId: b.jornadaId, rev: { $lte: datos.rev } },
+            { $set: datos },
+            { upsert: true, setDefaultsOnInsert: true }
+        );
+
+        res.json({ ok: true });
     } catch (err) {
+        if (err.code === 11000) return res.json({ ok: true, ignorado: true });
+        console.error("Error guardando jornada:", err);
         res.status(400).json({ ok: false, error: err.message });
     }
 });
+
+router.get("/super", (req, res) => {
+    res.render("super", { dataUrl: "/super/data" });
+});
+
+router.get("/super/data", async (req, res) => {
+    try {
+        const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const docs = await Journey.find({ jornadaId: { $exists: true }, inicio: { $gte: desde } })
+            .select("jornadaId numeroEmpleado nombreEmpleado abierta actividadActual actividadDesde inicio fin actividades")
+            .lean();
+
+        res.set("Cache-Control", "no-store");
+        res.json({
+            serverNow: Date.now(),
+            jornadas: docs.map((d) => ({
+                id: d.jornadaId,
+                numero: d.numeroEmpleado,
+                nombre: d.nombreEmpleado,
+                abierta: d.abierta === true,
+                actividadActual: d.actividadActual,
+                actividadDesde: d.actividadDesde,
+                inicio: d.inicio,
+                fin: d.fin,
+                actividades: d.actividades || [],
+            })),
+        });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+router.post("/super/cerrar", async (req, res) => {
+    try {
+        const { jornadaId, fin } = req.body;
+        const finDate = new Date(fin);
+        if (!jornadaId || isNaN(finDate)) {
+            return res.status(400).json({ ok: false, error: "Datos inválidos" });
+        }
+
+        const j = await Journey.findOne({ jornadaId });
+        if (!j) return res.status(404).json({ ok: false, error: "Jornada no encontrada" });
+        if (!j.abierta) return res.status(409).json({ ok: false, error: "La jornada ya está cerrada" });
+
+        const desde = j.actividadDesde || j.inicio;
+        if (finDate < desde) {
+            return res.status(400).json({ ok: false, error: "La salida no puede ser anterior al inicio de la última actividad" });
+        }
+        if (finDate.getTime() > Date.now() + 60000) {
+            return res.status(400).json({ ok: false, error: "La salida no puede estar en el futuro" });
+        }
+
+        // Suma el último tramo a la actividad en curso
+        const nombre = j.actividadActual || "Sin asignar";
+        const ms = finDate - desde;
+        const actividades = j.actividades.map((a) => ({ nombre: a.nombre, milisegundos: a.milisegundos }));
+        const existente = actividades.find((a) => a.nombre === nombre);
+        if (existente) existente.milisegundos += ms;
+        else actividades.push({ nombre, milisegundos: ms });
+
+        const cambios = j.cambios.map((c) => ({ nombre: c.nombre, inicio: c.inicio, fin: c.fin }));
+        if (ms >= 500) cambios.push({ nombre, inicio: desde, fin: finDate });
+
+        // El filtro por rev evita pisar un cambio que el empleado envíe justo en este momento
+        const r = await Journey.findOneAndUpdate(
+            { jornadaId, abierta: true, rev: j.rev },
+            { $set: {
+                abierta: false,
+                cierreManual: true,
+                fin: finDate,
+                totalMs: finDate - j.inicio,
+                actividadActual: null,
+                actividadDesde: null,
+                actividades,
+                cambios,
+            } },
+            { new: true }
+        );
+        if (!r) {
+            return res.status(409).json({ ok: false, error: "La jornada cambió mientras se cerraba. Actualiza e inténtalo de nuevo." });
+        }
+
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("Error cerrando jornada:", err);
+        res.status(400).json({ ok: false, error: err.message });
+    }
+});
+
 
 // Exports
 module.exports = router
