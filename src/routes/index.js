@@ -4518,6 +4518,16 @@ router.post("/super/cerrar", async (req, res) => {
     }
 });
 
+router.get("/cpk/:id", async (req, res) => {
+  try {
+    const part = await Par.findById(req.params.id).lean();
+    if (!part) return res.status(404).send("Parte no encontrada");
+    res.render("cpkgraphic", { part, empresa: "Mi Empresa" });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 
 // Exports
 module.exports = router

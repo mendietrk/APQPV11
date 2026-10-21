@@ -1,0 +1,531 @@
+<%
+/* =====================================================================
+   cpkgraphic.ejs — Process Capabilities Cpk AIAG (formato KMX-FR-134)
+   ---------------------------------------------------------------------
+   res.render("cpkgraphic", { part, estudio, lang })
+     part    -> documento de Par (models/part.js)  -> empresa, cliente, parte
+     estudio -> documento con las mediciones y especificaciones
+     lang    -> 'es' (default) | 'en'
+   Si los campos de "estudio" se llaman distinto en tu esquema, cámbialos
+   SOLO en la sección "MAPEO DE CAMPOS" de abajo.
+   ===================================================================== */
+
+const L  = (typeof lang !== 'undefined' && String(lang).toLowerCase() === 'en') ? 'en' : 'es';
+const P  = (typeof part    !== 'undefined' && part)    ? part    : {};
+const E  = (typeof estudio !== 'undefined' && estudio) ? estudio : {};
+
+const pick = (o, ...ks) => { for (const k of ks) { const v = o ? o[k] : undefined; if (v !== undefined && v !== null && v !== '') return v; } return null; };
+const num  = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
+
+/* ======================= MAPEO DE CAMPOS ======================= */
+// --- De la constante Par (part.js) ---
+const empresaCorta = pick(P, 'or1') || '';
+const empresaRazon = pick(P, 'or2') || empresaCorta;
+const direccion    = [P.or3, P.or4, P.or5, P.or7].filter(Boolean).join(', ');
+const cliente      = pick(P, 'cu1') || '';
+const numParte     = pick(P, 'pa6') || '';
+const indice       = pick(P, 'pa1') || '';
+const proyecto     = pick(E, 'proyecto') || pick(P, 'pa8') || '';
+const nombreParte  = pick(E, 'nombreParte', 'partName') || pick(P, 'pa2', 'pa3') || '';
+
+// --- De la constante del estudio (mediciones) ---
+const maquina    = pick(E, 'maquina', 'machine') || '';
+const equipo     = pick(E, 'equipo', 'instrumento', 'equipment') || '';
+const unidad     = pick(E, 'unidad', 'unit') || 'mm.';
+const dimension  = pick(E, 'dimension', 'caracteristica', 'cavidad') || '';
+const NOM        = num(pick(E, 'nominal'));
+const LSL        = num(pick(E, 'lsl', 'lie', 'limiteInferior'));
+const USL        = num(pick(E, 'usl', 'lse', 'limiteSuperior'));
+const clasesCfg  = num(pick(E, 'clases', 'classes'));
+const cpkMin     = num(pick(E, 'cpkMin')) || 1.33;
+const cpkMax     = num(pick(E, 'cpkMax')) || 1.67;
+const fechaRaw   = pick(E, 'fecha', 'date', 'createdAt');
+const validador  = pick(E, 'validador', 'validator') || '';
+const firma      = pick(E, 'firma', 'signature') || validador;
+const comentario = pick(E, 'comentario', 'comment') || '';
+const formato    = pick(E, 'formato', 'formCode') || 'KMX-FR-134';
+let   rawVals    = pick(E, 'valores', 'mediciones', 'values', 'datos') || [];
+/* =============================================================== */
+
+const T = {
+  es: {
+    title: 'Capacidad de Proceso Cpk AIAG', choose: 'Elige un idioma', langName: 'español',
+    proyecto: 'No. de proyecto (ver dibujo):', nombre: 'Nombre de la parte:', numero: 'No. de parte / Índice:',
+    maquina: 'No. de máquina:', equipo: 'Equipo de medición:', unidad: 'Unidad de medición:',
+    dimension: 'Dimensión / Cavidad:', cantidad: 'Cantidad de muestras:', nominal: 'Valor nominal de la dimensión:',
+    lsl: 'Límite inferior de especificación LSL:', usl: 'Límite superior de especificación USL:',
+    clases: 'Cantidad de clases del histograma:', entre: 'entre',
+    notCap: 'no capaz', condCap: 'condicionalmente capaz', cap: 'capaz',
+    evaluados: 'Cantidad de muestras evaluadas', media: 'Promedio µ', desv: 'Desviación estándar',
+    resultados: 'Resultados del estudio de capacidad', evalCpk: 'Evaluación Cpk', evalPpk: 'Evaluación Ppk',
+    mediana: 'Mediana', rango: 'Rango', minimo: 'Mínimo', maximo: 'Máximo',
+    ppmCalc: 'ppm calculado', ppmObs: 'ppm observado', fuera: 'Fuera de especificación', r6s: 'Rango 6s',
+    crono: 'Cronología de muestras', histo: 'Histograma', prob: 'Gráfica de probabilidad', coment: 'Comentario',
+    fecha: 'Fecha:', empresa: 'Empresa:', validador: 'Validó:', firma: 'Firma:', cliente: 'Cliente:',
+    prom: 'promedio µ', print: 'Imprimir / Guardar PDF', sinDatos: 'No hay mediciones para evaluar.',
+    sym: { ci: 'Cpi', cs: 'Cps', pi: 'Ppi', ps: 'Pps' },
+    meses: ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+  },
+  en: {
+    title: 'Process Capabilities Cpk AIAG', choose: 'choose language', langName: 'english',
+    proyecto: 'project-no. (see drawing):', nombre: 'Part Name:', numero: 'Part Number / Index:',
+    maquina: 'machine #.:', equipo: 'Measurement Equipment:', unidad: 'Measurement Unit:',
+    dimension: 'Dimension / Cavity #.:', cantidad: 'quantity of samples:', nominal: 'Nominal Value of Dimension:',
+    lsl: 'Lower Specification Limit LSL:', usl: 'Upper Specification Limit USL:',
+    clases: 'quantity classes histogram:', entre: 'between',
+    notCap: 'not capable', condCap: 'conditionally capable', cap: 'capable',
+    evaluados: 'Amount of Samples Evaluated', media: 'average µ', desv: 'standard deviation',
+    resultados: 'Results of the capacity study', evalCpk: 'evaluation Cpk', evalPpk: 'evaluation Ppk',
+    mediana: 'median', rango: 'range', minimo: 'minimum', maximo: 'maximum',
+    ppmCalc: 'calculation ppm', ppmObs: 'observed ppm', fuera: 'transgression', r6s: '6s - range',
+    crono: 'sample chronology', histo: 'histogram', prob: 'probability plot', coment: 'comment',
+    fecha: 'date:', empresa: 'company:', validador: 'validator:', firma: 'signature:', cliente: 'customer:',
+    prom: 'average µ', print: 'Print / Save PDF', sinDatos: 'No measurements to evaluate.',
+    sym: { ci: 'Cpu', cs: 'Cpo', pi: 'Ppi', ps: 'Pps' },
+    meses: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  }
+}[L];
+
+/* ---------------------- Mediciones ---------------------- */
+if (typeof rawVals === 'string') rawVals = rawVals.split(/[\s,;]+/);
+const textos = [];
+const valores = (Array.isArray(rawVals) ? rawVals : []).map(m => {
+  const v = (m !== null && typeof m === 'object') ? (m.valor ?? m.value ?? m.xi ?? m.medicion) : m;
+  const nv = num(v); if (nv !== null) textos.push(String(v).trim()); return nv;
+}).filter(v => v !== null);
+const n = valores.length;
+const decDatos = Math.min(4, Math.max(2, ...textos.map(s => (s.split('.')[1] || '').length)));
+
+/* ---------------------- Funciones estadísticas ---------------------- */
+function gammaln(x) {
+  const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+  let y = x, tmp = x + 5.5; tmp -= (x + 0.5) * Math.log(tmp); let ser = 1.000000000190015;
+  for (const ci of c) ser += ci / ++y;
+  return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+function gammaP(a, x) {                       // gamma incompleta regularizada P(a,x)
+  if (x <= 0) return 0;
+  if (x < a + 1) {
+    let ap = a, sum = 1 / a, del = sum;
+    for (let i = 0; i < 500; i++) { ap++; del *= x / ap; sum += del; if (Math.abs(del) < Math.abs(sum) * 1e-14) break; }
+    return sum * Math.exp(-x + a * Math.log(x) - gammaln(a));
+  }
+  let b = x + 1 - a, c = 1e300, d = 1 / b, h = d;
+  for (let i = 1; i < 500; i++) {
+    const an = -i * (i - a); b += 2;
+    d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300;
+    c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300;
+    d = 1 / d; const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-14) break;
+  }
+  return 1 - Math.exp(-x + a * Math.log(x) - gammaln(a)) * h;
+}
+const Phi = z => 0.5 * (1 + Math.sign(z) * gammaP(0.5, z * z / 2));
+function normInv(p) {                          // Acklam
+  const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239];
+  const b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
+  const c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+  const d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+  const pl = 0.02425;
+  if (p < pl) { const q = Math.sqrt(-2 * Math.log(p)); return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  if (p > 1 - pl) { const q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  const q = p - 0.5, r = q * q;
+  return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+}
+function chi2inv(p, df) {
+  const z = normInv(p);
+  let x = Math.max(1e-6, df * Math.pow(1 - 2 / (9 * df) + z * Math.sqrt(2 / (9 * df)), 3));
+  for (let i = 0; i < 50; i++) {
+    const f = gammaP(df / 2, x / 2) - p;
+    const pdf = Math.exp((df / 2 - 1) * Math.log(x) - x / 2 - (df / 2) * Math.LN2 - gammaln(df / 2));
+    const step = f / pdf; x = Math.max(x - step, x / 10);
+    if (Math.abs(step) < 1e-12 * x) break;
+  }
+  return x;
+}
+
+/* ---------------------- Cálculos del estudio ---------------------- */
+let mu = null, s = null, sC = null, mediana = null, minV = null, maxV = null, rango = null;
+if (n > 0) {
+  mu = valores.reduce((a, b) => a + b, 0) / n;
+  minV = Math.min(...valores); maxV = Math.max(...valores); rango = maxV - minV;
+  const ord = [...valores].sort((a, b) => a - b);
+  mediana = n % 2 ? ord[(n - 1) / 2] : (ord[n / 2 - 1] + ord[n / 2]) / 2;
+}
+if (n > 1) {
+  s  = Math.sqrt(valores.reduce((a, x) => a + (x - mu) ** 2, 0) / (n - 1));
+  // σ para Cp/Cpk: límite superior de confianza 90 % (χ², n g.l.) — igual que el formato Excel
+  sC = s * Math.sqrt(n / chi2inv(0.10, n));
+}
+function idx(sd) {
+  if (!(sd > 0)) return { i: null, s: null, p: null, k: null };
+  const i  = LSL !== null ? (mu - LSL) / (3 * sd) : null;
+  const sp = USL !== null ? (USL - mu) / (3 * sd) : null;
+  const p  = (LSL !== null && USL !== null) ? (USL - LSL) / (6 * sd) : null;
+  const arr = [i, sp].filter(v => v !== null);
+  return { i, s: sp, p, k: arr.length ? Math.min(...arr) : null };
+}
+const C = idx(sC), PP = idx(s);
+function evalua(v) {
+  if (v === null) return { txt: '—', cls: '' };
+  if (v < cpkMin)  return { txt: T.notCap,  cls: 'ev-bad' };
+  if (v <= cpkMax) return { txt: T.condCap, cls: 'ev-warn' };
+  return { txt: T.cap, cls: 'ev-ok' };
+}
+const evC = evalua(C.k), evP = evalua(PP.k);
+
+const ppm = { l: null, u: null };
+if (s > 0) {
+  ppm.l = LSL !== null ? Phi((LSL - mu) / s) * 1e6 : 0;
+  ppm.u = USL !== null ? (1 - Phi((USL - mu) / s)) * 1e6 : 0;
+}
+const obsL = LSL !== null ? valores.filter(v => v < LSL).length : 0;
+const obsU = USL !== null ? valores.filter(v => v > USL).length : 0;
+const ppmObs = n ? { l: obsL / n * 1e6, u: obsU / n * 1e6 } : { l: null, u: null };
+
+const f3 = v => (v === null || !Number.isFinite(v)) ? '—' : v.toFixed(3);
+const fP = v => (v === null || !Number.isFinite(v)) ? '—' : (v < 1 && v > 0 ? v.toFixed(2) : Math.round(v).toLocaleString('en-US'));
+const fD = v => (v === null || !Number.isFinite(v)) ? '' : v.toFixed(decDatos);
+const fN = v => v === null ? '' : String(v);
+
+let fechaTxt = '';
+if (fechaRaw) {
+  const dt = new Date(fechaRaw.$date || fechaRaw);
+  fechaTxt = isNaN(dt) ? String(fechaRaw) : `${String(dt.getUTCDate()).padStart(2, '0')}-${T.meses[dt.getUTCMonth()]}-${dt.getUTCFullYear()}`;
+}
+
+/* ---------------------- Gráficas (SVG) ---------------------- */
+const esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function nice(lo, hi, cnt) {
+  if (!(hi > lo)) { hi = lo + 1; lo = lo - 1; }
+  const raw = (hi - lo) / cnt, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+  const st = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+  const a = Math.floor(lo / st + 1e-9) * st, b = Math.ceil(hi / st - 1e-9) * st, ticks = [];
+  for (let v = a; v <= b + st / 2; v += st) ticks.push(+v.toFixed(10));
+  let dec = Math.max(0, Math.ceil(-Math.log10(st) - 1e-9));
+  if (Math.abs(st * Math.pow(10, dec) - Math.round(st * Math.pow(10, dec))) > 1e-6) dec++;
+  return { lo: a, hi: b, ticks, dec };
+}
+const C_USL = '#e60000', C_SIG = '#2f75b5', C_MU = '#00a651', C_DAT = '#2e5c8a';
+const pdf = x => Math.exp(-0.5 * ((x - mu) / s) ** 2) / (s * Math.sqrt(2 * Math.PI));
+
+let svgCrono = '', svgHist = '', svgProb = '';
+if (n > 1 && s > 0) {
+  const lo0 = Math.min(minV, mu - 3 * s, LSL ?? minV), hi0 = Math.max(maxV, mu + 3 * s, USL ?? maxV);
+  const padY = (hi0 - lo0) * 0.08;
+  const yA = nice(lo0 - padY, hi0 + padY, 7);
+  const sig3 = [mu + 3 * s, mu - 3 * s];
+
+  /* ---- Cronología ---- */
+  {
+    const W = 560, H = 250, m = { l: 40, r: 108, t: 18, b: 30 };
+    const xA = nice(0, Math.max(n, 10), 7);
+    const X = v => m.l + (v - xA.lo) / (xA.hi - xA.lo) * (W - m.l - m.r);
+    const Y = v => H - m.b - (v - yA.lo) / (yA.hi - yA.lo) * (H - m.t - m.b);
+    let g = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+    g += `<text x="${m.l + 4}" y="${m.t - 6}" class="ax" text-anchor="start">${esc(unidad)}</text>`;
+    yA.ticks.forEach(t => g += `<line x1="${m.l - 3}" x2="${m.l}" y1="${Y(t)}" y2="${Y(t)}" class="tk"/><text x="${m.l - 5}" y="${Y(t) + 3}" class="tl" text-anchor="end">${t.toFixed(yA.dec)}</text>`);
+    xA.ticks.forEach(t => g += `<line x1="${X(t)}" x2="${X(t)}" y1="${H - m.b}" y2="${H - m.b + 3}" class="tk"/><text x="${X(t)}" y="${H - m.b + 12}" class="tl" text-anchor="middle">${t}</text>`);
+    g += `<line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" class="axl"/><line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" class="axl"/>`;
+    g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" class="ax" text-anchor="middle">i</text>`;
+    const hl = (v, col, dash, w) => { if (v !== null) g += `<line x1="${X(1)}" x2="${X(n)}" y1="${Y(v)}" y2="${Y(v)}" stroke="${col}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`; };
+    hl(USL, C_USL, '', 1.4); hl(LSL, C_USL, '7 4', 1.6);
+    hl(sig3[0], C_SIG, '2 2', 1); hl(sig3[1], C_SIG, '2 2', 1);
+    hl(mu, C_MU, '', 1.6);
+    g += `<polyline points="${valores.map((v, i) => X(i + 1).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ')}" fill="none" stroke="${C_DAT}" stroke-width="0.9"/>`;
+    const r = n > 150 ? 1 : 1.7;
+    valores.forEach((v, i) => {
+      const out = (USL !== null && v > USL) || (LSL !== null && v < LSL);
+      g += `<circle cx="${X(i + 1).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${r}" fill="${out ? C_USL : '#fff'}" stroke="${out ? C_USL : C_DAT}" stroke-width="0.8"/>`;
+    });
+    // Leyenda
+    const lx = W - m.r + 10; let ly = m.t + 50;
+    const leg = (col, dash, label, mark) => {
+      g += `<line x1="${lx}" x2="${lx + 18}" y1="${ly}" y2="${ly}" stroke="${col}" stroke-width="1.5" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+      if (mark) g += `<circle cx="${lx + 9}" cy="${ly}" r="1.8" fill="#fff" stroke="${col}"/>`;
+      g += `<text x="${lx + 22}" y="${ly + 3}" class="lg">${esc(label)}</text>`; ly += 13;
+    };
+    leg(C_USL, '', 'USL'); leg(C_SIG, '2 2', '+ 3 Sigma'); leg(C_DAT, '', dimension || 'xi', true);
+    leg(C_MU, '', T.prom); leg(C_SIG, '2 2', '- 3 Sigma'); leg(C_USL, '5 3', 'LSL');
+    svgCrono = g + '</svg>';
+  }
+
+  const xMinH = Math.min(minV, mu - 4 * s, LSL ?? minV), xMaxH = Math.max(maxV, mu + 4 * s, USL ?? maxV);
+  const padX = (xMaxH - xMinH) * 0.03;
+  const xH = nice(xMinH - padX, xMaxH + padX, 6);
+
+  /* ---- Histograma ---- */
+  {
+    const W = 300, H = 255, m = { l: 34, r: 10, t: 30, b: 32 };
+    const k = clasesCfg || Math.min(25, Math.max(5, Math.round(Math.sqrt(n))));
+    const bw = (maxV - minV) / k || s / 2;
+    const cnt = new Array(k).fill(0);
+    valores.forEach(v => { let i = Math.floor((v - minV) / bw); if (i >= k) i = k - 1; if (i < 0) i = 0; cnt[i]++; });
+    const peak = n * bw * pdf(mu);
+    const yH = nice(0, Math.max(...cnt, peak) * 1.08, 5);
+    const X = v => m.l + (v - xH.lo) / (xH.hi - xH.lo) * (W - m.l - m.r);
+    const Y = v => H - m.b - (v - yH.lo) / (yH.hi - yH.lo) * (H - m.t - m.b);
+    let g = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+    yH.ticks.forEach(t => g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}" class="gr"/><text x="${m.l - 4}" y="${Y(t) + 3}" class="tl" text-anchor="end">${t.toFixed(yH.dec)}</text>`);
+    xH.ticks.forEach(t => g += `<line x1="${X(t)}" x2="${X(t)}" y1="${H - m.b}" y2="${H - m.b + 3}" class="tk"/><text x="${X(t)}" y="${H - m.b + 12}" class="tl" text-anchor="middle">${t.toFixed(xH.dec)}</text>`);
+    g += `<line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" class="axl"/><line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" class="axl"/>`;
+    g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" class="ax" text-anchor="middle">${esc(unidad)}</text>`;
+    cnt.forEach((c, i) => { const x0 = X(minV + i * bw), x1 = X(minV + (i + 1) * bw); g += `<rect x="${x0}" y="${Y(c)}" width="${Math.max(0.8, x1 - x0)}" height="${H - m.b - Y(c)}" fill="#1f3fff" stroke="#fff" stroke-width="0.3"/>`; });
+    let path = '';
+    for (let i = 0; i <= 160; i++) { const x = xH.lo + (xH.hi - xH.lo) * i / 160; path += (i ? 'L' : 'M') + X(x).toFixed(1) + ',' + Y(n * bw * pdf(x)).toFixed(1); }
+    g += `<path d="${path}" fill="none" stroke="#000" stroke-width="1"/>`;
+    const vl = (v, col, dash, lab, row) => {
+      if (v === null) return;
+      g += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t - 4}" y2="${H - m.b}" stroke="${col}" stroke-width="1.2" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+      if (lab) g += `<text x="${X(v)}" y="${m.t - 7 - row * 9}" class="lb" fill="${col}" text-anchor="middle">${lab}</text>`;
+    };
+    vl(LSL, C_USL, '', 'LSL', 0); vl(USL, C_USL, '', 'USL', 0);
+    vl(sig3[1], '#000', '3 2', '-3σ', 1); vl(sig3[0], '#000', '3 2', '+3σ', 1); vl(mu, C_MU, '', 'µ', 0);
+    svgHist = g + '</svg>';
+  }
+
+  /* ---- Gráfica de probabilidad normal ---- */
+  {
+    const W = 300, H = 255, m = { l: 30, r: 10, t: 30, b: 32 };
+    const ord = [...valores].sort((a, b) => a - b);
+    const X = v => m.l + (v - xH.lo) / (xH.hi - xH.lo) * (W - m.l - m.r);
+    const Y = u => H - m.b - (u + 3.5) / 7 * (H - m.t - m.b);
+    let g = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+    [-3, -2, -1, 0, 1, 2, 3].forEach(t => g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}" class="gr"/><text x="${m.l - 4}" y="${Y(t) + 3}" class="tl" text-anchor="end">${t}</text>`);
+    xH.ticks.forEach(t => g += `<line x1="${X(t)}" x2="${X(t)}" y1="${m.t}" y2="${H - m.b}" class="gr"/><text x="${X(t)}" y="${H - m.b + 12}" class="tl" text-anchor="middle">${t.toFixed(xH.dec)}</text>`);
+    g += `<rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="none" class="axl"/>`;
+    g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" class="ax" text-anchor="middle">${esc(unidad)}</text>`;
+    g += `<text x="9" y="${(m.t + H - m.b) / 2}" class="ax" text-anchor="middle" transform="rotate(-90 9 ${(m.t + H - m.b) / 2})">u</text>`;
+    const vl = (v, col, dash, lab) => {
+      if (v === null) return;
+      g += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${H - m.b}" stroke="${col}" stroke-width="1.2" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
+      if (lab) g += `<text x="${X(v)}" y="${m.t - 5}" class="lb" fill="${col}" text-anchor="middle">${lab}</text>`;
+    };
+    vl(LSL, C_USL, '', 'LSL'); vl(USL, C_USL, '', 'USL'); vl(mu, C_MU, '', 'µ');
+    vl(sig3[0], '#000', '3 2', ''); vl(sig3[1], '#000', '3 2', '');
+    g += `<line x1="${X(mu - 3.5 * s)}" y1="${Y(-3.5)}" x2="${X(mu + 3.5 * s)}" y2="${Y(3.5)}" stroke="${C_USL}" stroke-width="1"/>`;
+    ord.forEach((v, i) => { const u = normInv((i + 1 - 0.3) / (n + 0.4)); g += `<circle cx="${X(v).toFixed(1)}" cy="${Y(u).toFixed(1)}" r="1.3" fill="${C_DAT}"/>`; });
+    svgProb = g + '</svg>';
+  }
+}
+
+const filas = Math.max(50, Math.ceil(n / 4));
+%>
+<!DOCTYPE html>
+<html lang="<%= L %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPK <%= numParte %> <%= indice %></title>
+  <style>
+    :root{
+      --line:#000; --soft:#7f7f7f;
+      --in:#dce6f1;   /* celdas de captura */
+      --calc:#d8e4bc; /* celdas calculadas */
+      --ok:#00b050; --warn:#ffc000; --bad:#ff5050;
+      --brand:#1f3c88;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0}
+    body{background:#d9dde3;color:#000;font:7pt/1.15 Calibri,Carlito,"Segoe UI",Arial,sans-serif}
+    .toolbar{position:sticky;top:0;z-index:5;display:flex;gap:8px;justify-content:center;align-items:center;padding:8px;background:#fff;border-bottom:1px solid #bbb;font-size:13px}
+    .toolbar button{border:0;border-radius:5px;padding:7px 14px;font:600 13px Arial,sans-serif;cursor:pointer;background:var(--brand);color:#fff}
+    .toolbar a{color:var(--brand);font-weight:600;text-decoration:none;padding:6px 10px;border:1px solid var(--brand);border-radius:5px}
+    .toolbar a.act{background:var(--brand);color:#fff}
+
+    .sheet{width:267.4mm;height:203.9mm;margin:12px auto;background:#fff;padding:3mm;display:flex;flex-direction:column;gap:2mm;border:1px solid var(--line);box-shadow:0 2px 12px rgba(0,0,0,.2)}
+    /* ---------- encabezado ---------- */
+    .head{display:grid;grid-template-columns:42mm 30mm 1fr 52mm;gap:3mm;align-items:stretch;height:15mm}
+    .logo{display:flex;flex-direction:column;justify-content:center}
+    .logo b{font:900 17pt/1 "Arial Black",Arial,sans-serif;color:var(--brand);letter-spacing:.5px;text-transform:uppercase}
+    .logo span{font-size:5.5pt;color:#444;margin-top:1mm}
+    .langbox{display:flex;flex-direction:column;align-self:center}
+    .langbox .t{background:#ff0000;color:#fff;font-weight:700;text-align:center;padding:.4mm;font-size:6.5pt;line-height:1.1}
+    .langbox .v{border:1px solid var(--line);text-align:center;font-weight:700;font-size:8.5pt;padding:.6mm}
+    .titlebox{border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:17pt}
+    .custbox{border:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;padding:0 2mm;font-size:7.5pt}
+    .custbox b{font-size:10pt}
+    /* ---------- cuerpo ---------- */
+    .main{flex:1;display:grid;grid-template-columns:57mm 88mm 1fr;gap:3mm;min-height:0}
+    table{border-collapse:collapse;width:100%}
+    td,th{border:1px solid var(--line);padding:0 .8mm;height:3.18mm;white-space:nowrap;overflow:hidden}
+    .data td{text-align:right;font-weight:700}
+    .data td.i{background:#fff;font-weight:400;text-align:center;font-size:6pt;width:6mm}
+    .data td.x{background:var(--in)}
+    .data td.out{color:#e60000}
+    .data th{font-weight:700;font-style:italic}
+    .mid{display:flex;flex-direction:column;gap:1.6mm}
+    .mid td.k{text-align:right;font-weight:700;background:#fff}
+    .mid td.v{text-align:center;font-weight:700;background:var(--in)}
+    .mid td.c{text-align:center;font-weight:700;background:var(--calc)}
+    .mid td.h{text-align:center;font-weight:700;background:#fff}
+    .mid td.lbl{text-align:center;font-weight:700;white-space:normal;line-height:1.1}
+    .mid td.ev-ok,.mid td.g{background:var(--ok)!important;color:#fff}
+    .mid td.ev-warn{background:var(--warn)!important}
+    .mid td.ev-bad{background:var(--bad)!important;color:#fff}
+    .mid td.thr{background:#d9d9d9;text-align:center;font-weight:700}
+    sub{font-size:70%}
+    .right{display:flex;flex-direction:column;gap:2mm;min-height:0}
+    .box{border:1px solid var(--line);padding:1mm 1.5mm}
+    .box h3{margin:0;text-align:center;font-size:8pt}
+    .box svg{width:100%;height:auto;display:block}
+    .pair{display:grid;grid-template-columns:1fr 1fr;gap:2mm}
+    .comment{flex:1;display:flex;flex-direction:column;min-height:18mm}
+    .comment h3{border-bottom:1px solid var(--line);padding-bottom:.6mm}
+    .comment p{margin:1mm 0 0;font-size:7.5pt;white-space:pre-wrap}
+    .empty{display:flex;align-items:center;justify-content:center;height:40mm;color:#666;font-size:9pt}
+    svg .tl{font-size:9px;fill:#000;font-weight:700}
+    svg .ax{font-size:10px;font-weight:700;fill:#000}
+    svg .lg{font-size:8.5px;font-weight:700;fill:#000}
+    svg .lb{font-size:8.5px;font-weight:700}
+    svg .tk,svg .axl{stroke:#000;stroke-width:.8}
+    svg .gr{stroke:#d9d9d9;stroke-width:.6}
+    /* ---------- pie ---------- */
+    .foot{display:grid;grid-template-columns:12mm 30mm 13mm 50mm 14mm 1fr 14mm 1fr 40mm;align-items:center;height:7mm;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:7pt}
+    .foot .val{border-right:1px solid var(--line);height:100%;display:flex;align-items:center;padding-left:1mm}
+    .foot .code{background:#b7dee8;border:1px solid var(--line);height:100%;display:flex;align-items:center;justify-content:center;font-size:10pt}
+
+    @page{size:letter landscape;margin:6mm}
+    @media print{
+      body{background:#fff}
+      .no-print{display:none!important}
+      .sheet{margin:0;box-shadow:none}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    }
+  </style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <button onclick="window.print()"><%= T.print %></button>
+  <a href="#" data-lang="es" class="<%= L === 'es' ? 'act' : '' %>">Español</a>
+  <a href="#" data-lang="en" class="<%= L === 'en' ? 'act' : '' %>">English</a>
+</div>
+
+<div class="sheet">
+  <!-- ====== Encabezado ====== -->
+  <div class="head">
+    <div class="logo"><b><%= empresaCorta %></b><span><%= direccion %></span></div>
+    <div class="langbox"><div class="t"><%= L === 'es' ? 'Elige un idioma' : 'choose language' %></div><div class="v"><%= T.langName %></div></div>
+    <div class="titlebox"><%= T.title %></div>
+    <div class="custbox"><span><%= T.cliente %></span><b><%= cliente %></b></div>
+  </div>
+
+  <div class="main">
+    <!-- ====== Mediciones ====== -->
+    <div>
+      <table class="data">
+        <tr><% for (let g = 0; g < 4; g++) { %><th>i</th><th>xi</th><% } %></tr>
+        <% for (let r = 0; r < filas; r++) { %>
+          <tr>
+          <% for (let g = 0; g < 4; g++) {
+               const i = g * filas + r; const v = valores[i];
+               const out = v !== undefined && ((USL !== null && v > USL) || (LSL !== null && v < LSL)); %>
+            <td class="i"><%= i + 1 %></td><td class="x <%= out ? 'out' : '' %>"><%= v !== undefined ? fD(v) : '' %></td>
+          <% } %>
+          </tr>
+        <% } %>
+      </table>
+    </div>
+
+    <!-- ====== Datos y resultados ====== -->
+    <div class="mid">
+      <table>
+        <tr><td class="k"><%= T.proyecto %></td><td class="v"><%= proyecto %></td></tr>
+        <tr><td class="k"><%= T.nombre %></td><td class="v"><%= nombreParte %></td></tr>
+        <tr><td class="k"><%= T.numero %></td><td class="v"><%= [numParte, indice].filter(Boolean).join(' / ') %></td></tr>
+        <tr><td class="k"><%= T.maquina %></td><td class="v"><%= maquina %></td></tr>
+        <tr><td class="k"><%= T.equipo %></td><td class="v"><%= equipo %></td></tr>
+        <tr><td class="k"><%= T.unidad %></td><td class="v"><%= unidad %></td></tr>
+        <tr><td class="k"><%= T.dimension %></td><td class="v"><%= dimension %></td></tr>
+        <tr><td class="k"><%= T.cantidad %></td><td class="v"><%= n %></td></tr>
+        <tr><td class="k"><%= T.nominal %></td><td class="v"><%= fN(NOM) %></td></tr>
+        <tr><td class="k"><%= T.lsl %></td><td class="v"><%= fN(LSL) %></td></tr>
+        <tr><td class="k"><%= T.usl %></td><td class="v"><%= fN(USL) %></td></tr>
+        <tr><td class="k"><%= T.clases %></td><td class="c"><%= clasesCfg || (n ? Math.min(25, Math.max(5, Math.round(Math.sqrt(n)))) : '') %></td></tr>
+      </table>
+      <table>
+        <tr><td class="h" style="width:22%">C<sub>pk</sub> &lt;</td><td class="h" style="width:22%"><%= cpkMin.toFixed(3) %></td><td class="thr ev-bad"><%= T.notCap %></td></tr>
+        <tr><td class="h">C<sub>pk</sub></td><td class="h"><%= T.entre %></td><td class="thr ev-warn"><%= T.condCap %></td></tr>
+        <tr><td class="h">C<sub>pk</sub> &gt;</td><td class="h"><%= cpkMax.toFixed(3) %></td><td class="thr ev-ok"><%= T.cap %></td></tr>
+      </table>
+      <table>
+        <tr><td class="k"><%= T.evaluados %></td><td class="c" style="width:45%"><%= n %></td></tr>
+        <tr><td class="k"><%= T.media %></td><td class="c"><%= f3(mu) %></td></tr>
+        <tr><td class="k"><%= T.desv %></td><td class="c"><%= f3(s) %></td></tr>
+      </table>
+      <table>
+        <tr><td class="lbl" rowspan="4" style="width:27%;border-bottom:0"><%= T.resultados %></td><td class="h" style="width:18%"><%= T.sym.ci.slice(0,1) %><sub><%= T.sym.ci.slice(1) %></sub></td><td class="c"><%= f3(C.i) %></td></tr>
+        <tr><td class="h"><%= T.sym.cs.slice(0,1) %><sub><%= T.sym.cs.slice(1) %></sub></td><td class="c"><%= f3(C.s) %></td></tr>
+        <tr><td class="h">C<sub>p</sub></td><td class="c g"><%= f3(C.p) %></td></tr>
+        <tr><td class="h">C<sub>pk</sub></td><td class="c g"><%= f3(C.k) %></td></tr>
+        <tr><td class="h" colspan="2"><%= T.evalCpk %></td><td class="c <%= evC.cls %>"><%= evC.txt %></td></tr>
+      </table>
+      <table>
+        <tr><td class="lbl" rowspan="4" style="width:27%;border-bottom:0"><%= T.resultados %></td><td class="h" style="width:18%"><%= T.sym.pi %></td><td class="c"><%= f3(PP.i) %></td></tr>
+        <tr><td class="h"><%= T.sym.ps %></td><td class="c"><%= f3(PP.s) %></td></tr>
+        <tr><td class="h">Pp</td><td class="c g"><%= f3(PP.p) %></td></tr>
+        <tr><td class="h">Ppk</td><td class="c g"><%= f3(PP.k) %></td></tr>
+        <tr><td class="h" colspan="2"><%= T.evalPpk %></td><td class="c <%= evP.cls %>"><%= evP.txt %></td></tr>
+      </table>
+      <table>
+        <tr><td class="k"><%= T.mediana %></td><td class="c" style="width:45%"><%= f3(mediana) %></td></tr>
+        <tr><td class="k"><%= T.rango %></td><td class="c"><%= f3(rango) %></td></tr>
+        <tr><td class="k"><%= T.minimo %></td><td class="c"><%= f3(minV) %></td></tr>
+        <tr><td class="k"><%= T.maximo %></td><td class="c"><%= f3(maxV) %></td></tr>
+      </table>
+      <table>
+        <tr><td class="h" colspan="3"><%= T.ppmCalc %></td></tr>
+        <tr><td class="lbl" rowspan="3" style="width:27%"><%= T.fuera %></td><td class="h" style="width:18%">pLSL</td><td class="c"><%= fP(ppm.l) %></td></tr>
+        <tr><td class="h">pUSL</td><td class="c"><%= fP(ppm.u) %></td></tr>
+        <tr><td class="h">p</td><td class="c"><%= ppm.l === null ? '—' : fP(ppm.l + ppm.u) %></td></tr>
+      </table>
+      <table>
+        <tr><td class="h" colspan="3"><%= T.ppmObs %></td></tr>
+        <tr><td class="lbl" rowspan="3" style="width:27%"><%= T.fuera %></td><td class="h" style="width:18%">pLSL</td><td class="c"><%= fP(ppmObs.l) %></td></tr>
+        <tr><td class="h">pUSL</td><td class="c"><%= fP(ppmObs.u) %></td></tr>
+        <tr><td class="h">p</td><td class="c"><%= ppmObs.l === null ? '—' : fP(ppmObs.l + ppmObs.u) %></td></tr>
+      </table>
+      <table>
+        <tr><td class="h" colspan="2"><%= T.r6s %></td></tr>
+        <tr><td class="h" style="width:45%">µ + 3s</td><td class="c"><%= s ? f3(mu + 3 * s) : '—' %></td></tr>
+        <tr><td class="h">µ - 3s</td><td class="c"><%= s ? f3(mu - 3 * s) : '—' %></td></tr>
+      </table>
+    </div>
+
+    <!-- ====== Gráficas ====== -->
+    <div class="right">
+      <% if (svgCrono) { %>
+        <div class="box"><h3><%= T.crono %></h3><%- svgCrono %></div>
+        <div class="pair">
+          <div class="box"><h3><%= T.histo %></h3><%- svgHist %></div>
+          <div class="box"><h3><%= T.prob %></h3><%- svgProb %></div>
+        </div>
+      <% } else { %>
+        <div class="box empty"><%= T.sinDatos %></div>
+      <% } %>
+      <div class="box comment"><h3><%= T.coment %></h3><p><%= comentario %></p></div>
+    </div>
+  </div>
+
+  <!-- ====== Pie ====== -->
+  <div class="foot">
+    <span><%= T.fecha %></span><span class="val"><%= fechaTxt %></span>
+    <span>&nbsp;<%= T.empresa %></span><span class="val"><%= empresaRazon %></span>
+    <span>&nbsp;<%= T.validador %></span><span class="val"><%= validador %></span>
+    <span>&nbsp;<%= T.firma %></span><span class="val"><%= firma %></span>
+    <span class="code"><%= formato %></span>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.toolbar a[data-lang]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var u = new URL(window.location.href);
+      u.searchParams.set('lang', a.getAttribute('data-lang'));
+      window.location.href = u.toString();
+    });
+  });
+</script>
+</body>
+</html>
