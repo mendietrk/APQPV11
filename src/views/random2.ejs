@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de números aleatorios</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 520px; margin: 30px auto; padding: 0 16px; color: #222; }
+    h1 { font-size: 1.4rem; }
+    .fila { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .campo { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
+    label { font-size: .9rem; margin-bottom: 4px; }
+    input { padding: 8px; font-size: 1rem; border: 1px solid #aaa; border-radius: 4px; }
+    button { padding: 10px 16px; font-size: 1rem; border: none; border-radius: 4px; cursor: pointer; background: #1f6feb; color: #fff; margin-right: 8px; }
+    button.secundario { background: #2da44e; }
+    button.terciario { background: #8250df; }
+    button { margin-bottom: 8px; }
+    textarea { width: 100%; height: 320px; margin-top: 14px; font-family: monospace; font-size: .95rem; box-sizing: border-box; }
+    .info { font-size: .85rem; color: #555; margin-top: 6px; }
+    .error { color: #c00; font-size: .9rem; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Generador de <%= typeof cantidad !== 'undefined' ? cantidad : 125 %> números aleatorios</h1>
+
+  <div class="fila">
+    <div class="campo">
+      <label for="minimo">Valor mínimo (E6)</label>
+      <input type="number" id="minimo" step="any" value="<%= typeof minimo !== 'undefined' ? minimo : 0 %>">
+    </div>
+    <div class="campo">
+      <label for="maximo">Valor máximo (D6)</label>
+      <input type="number" id="maximo" step="any" value="<%= typeof maximo !== 'undefined' ? maximo : 100 %>">
+    </div>
+    <div class="campo">
+      <label for="decimales">Decimales (F6)</label>
+      <input type="number" id="decimales" step="1" value="<%= typeof decimales !== 'undefined' ? decimales : 2 %>">
+    </div>
+  </div>
+
+  <button id="btnGenerar">Generar</button>
+  <button id="btnCopiar" class="secundario">Copiar para Excel</button>
+  <button id="btnCpk" class="terciario">Enviar a CPK Order</button>
+
+  <!-- Formulario oculto que envía los datos a cpkorder.ejs -->
+  <form id="formCpk" action="/cpkorder" method="POST" style="display:none;">
+    <input type="hidden" name="datos" id="hdDatos">
+    <input type="hidden" name="minimo" id="hdMinimo">
+    <input type="hidden" name="maximo" id="hdMaximo">
+    <input type="hidden" name="decimales" id="hdDecimales">
+  </form>
+
+  <div id="error" class="error"></div>
+  <textarea id="resultado" readonly></textarea>
+  <div class="info" id="info">Los números se copian uno por línea: en Excel selecciona la primera celda de la columna y pega (Ctrl+V).</div>
+
+  <script>
+    const CANTIDAD = <%= typeof cantidad !== 'undefined' ? Number(cantidad) : 125 %>;
+
+    // Equivalente a REDONDEAR de Excel (redondea alejándose de cero en .5)
+    function redondearExcel(valor, decimales) {
+      const factor = Math.pow(10, decimales);
+      const signo = valor < 0 ? -1 : 1;
+      return signo * Math.round(Math.abs(valor) * factor + 1e-9) / factor;
+    }
+
+    // =REDONDEAR(($D$6-$E$6)*ALEATORIO()+$E$6,$F$6)
+    function generarNumero(min, max, decimales) {
+      return redondearExcel((max - min) * Math.random() + min, decimales);
+    }
+
+    function generar() {
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = '';
+
+      const min = parseFloat(document.getElementById('minimo').value);
+      const max = parseFloat(document.getElementById('maximo').value);
+      const dec = parseInt(document.getElementById('decimales').value, 10);
+
+      if (isNaN(min) || isNaN(max) || isNaN(dec)) {
+        errorDiv.textContent = 'Ingresa valores numéricos válidos en los tres campos.';
+        return;
+      }
+      if (min > max) {
+        errorDiv.textContent = 'El valor mínimo no puede ser mayor que el máximo.';
+        return;
+      }
+
+      const numeros = [];
+      for (let i = 0; i < CANTIDAD; i++) {
+        const n = generarNumero(min, max, dec);
+        numeros.push(dec >= 0 ? n.toFixed(dec) : String(n));
+      }
+
+      document.getElementById('resultado').value = numeros.join('\n');
+    }
+
+    async function copiar() {
+      const area = document.getElementById('resultado');
+      if (!area.value) generar();
+      try {
+        await navigator.clipboard.writeText(area.value);
+      } catch (e) {
+        area.select();
+        document.execCommand('copy');
+      }
+      const info = document.getElementById('info');
+      info.textContent = '¡Copiado! Pega en la primera celda de la columna en Excel.';
+    }
+
+    function enviarACpk() {
+      const area = document.getElementById('resultado');
+      if (!area.value) generar();
+      if (!area.value) return; // hubo un error de validación
+
+      // Respaldo por si /cpkorder se abre con GET
+      try { sessionStorage.setItem('cpkDatos', area.value); } catch (e) {}
+
+      document.getElementById('hdDatos').value = area.value;
+      document.getElementById('hdMinimo').value = document.getElementById('minimo').value;
+      document.getElementById('hdMaximo').value = document.getElementById('maximo').value;
+      document.getElementById('hdDecimales').value = document.getElementById('decimales').value;
+      document.getElementById('formCpk').submit();
+    }
+
+    document.getElementById('btnGenerar').addEventListener('click', generar);
+    document.getElementById('btnCopiar').addEventListener('click', copiar);
+    document.getElementById('btnCpk').addEventListener('click', enviarACpk);
+    generar();
+  </script>
+</body>
+</html>

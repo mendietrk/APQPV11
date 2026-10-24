@@ -45,14 +45,19 @@
       background: var(--bg); color: var(--text); font: 14px ui-monospace, Consolas, monospace;
     }
     .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
-    button {
+    button, a.btn {
       padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
       background: var(--card); color: var(--text); font-size: .9rem; cursor: pointer;
+      text-decoration: none; display: inline-block;
     }
-    button:hover { border-color: var(--accent); }
+    button:hover, a.btn:hover { border-color: var(--accent); }
     button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
     .msg { font-size: .85rem; color: var(--muted); }
     .msg.err { color: #d33; }
+    .origen {
+      font-size: .85rem; color: var(--muted); margin: 0 0 14px;
+      padding: 8px 12px; border: 1px dashed var(--border); border-radius: 8px;
+    }
     .stats { display: flex; flex-wrap: wrap; gap: 10px; }
     .stat {
       flex: 1 1 130px; padding: 10px 12px; border: 1px solid var(--border);
@@ -89,14 +94,30 @@
   </style>
 </head>
 <body>
+<%
+  // Datos recibidos desde random.ejs (POST /cpkorder). Pueden llegar como texto o arreglo.
+  var datosTexto = '';
+  if (typeof datos !== 'undefined' && datos !== null) {
+    datosTexto = Array.isArray(datos) ? datos.join('\n') : String(datos);
+  }
+  var tieneOrigen = typeof minimo !== 'undefined' && minimo !== '' && minimo !== null;
+%>
 <div class="wrap">
   <h1>CPK Order</h1>
   <p class="sub">Pega los datos desde Excel, revisa la media, reordena arrastrando y copia el resultado.</p>
 
+  <% if (tieneOrigen) { %>
+    <p class="origen">
+      Datos generados en el generador aleatorio · mínimo <b><%= minimo %></b>,
+      máximo <b><%= maximo %></b>, decimales <b><%= decimales %></b>.
+      <a class="btn" href="/random?min=<%= encodeURIComponent(minimo) %>&max=<%= encodeURIComponent(maximo) %>&dec=<%= encodeURIComponent(decimales) %>" style="margin-left:8px">← Volver al generador</a>
+    </p>
+  <% } %>
+
   <!-- 1. Entrada -->
   <div class="card">
     <label for="input"><b>1. Pegar datos de Excel</b> (una columna, una fila o un rango)</label>
-    <textarea id="input" placeholder="Pega aquí los 125 valores (Ctrl+V)..."></textarea>
+    <textarea id="input" placeholder="Pega aquí los 125 valores (Ctrl+V)..."><%= datosTexto %></textarea>
     <div class="row">
       <button class="primary" id="btnLoad">Cargar datos</button>
       <button id="btnClear">Limpiar</button>
@@ -345,6 +366,7 @@
     input.value = ''; original = []; items = []; grid.innerHTML = ''; output.value = '';
     $('loadMsg').textContent = ''; $('copyMsg').textContent = '';
     $('results').classList.add('hidden');
+    try { sessionStorage.removeItem('cpkDatos'); } catch (err) {}
   });
 
   $('btnAsc').addEventListener('click', function () {
@@ -360,6 +382,17 @@
   $('btnCopyCol').addEventListener('click', function () { copyText(outputText(false), 'Columna'); });
   $('btnCopyRow').addEventListener('click', function () { copyText(outputText(true), 'Fila'); });
   $('optComma').addEventListener('change', updateOutput);
+
+  // ---------- Carga automática de datos recibidos desde random.ejs ----------
+  // 1) Datos enviados por el servidor (POST /cpkorder) ya vienen en el textarea.
+  // 2) Si no, se buscan en sessionStorage (por si /cpkorder se abrió con GET).
+  if (!input.value.trim()) {
+    try {
+      var guardados = sessionStorage.getItem('cpkDatos');
+      if (guardados) input.value = guardados;
+    } catch (err) {}
+  }
+  if (input.value.trim()) loadData();
 })();
 </script>
 </body>

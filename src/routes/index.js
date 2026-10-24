@@ -4528,6 +4528,30 @@ router.get("/cpk/:id", async (req, res) => {
   }
 });
 
+router.get('/random', (req, res) => {
+  res.render('random2', {
+    minimo: req.query.min ?? 0,
+    maximo: req.query.max ?? 100,
+    decimales: req.query.dec ?? 2,
+    cantidad: 125
+  });
+});
+
+router.get('/cpkorder', (req, res) => {
+  res.render('cpkorder', { title: 'CPK Order' });
+});
+
+router.post('/cpkorder', (req, res) => {
+  const datos = (req.body.datos || '')
+    .split('\n')
+    .map(v => parseFloat(v))
+    .filter(v => !isNaN(v));
+
+  res.render('cpkorder', {
+    datos                                
+  });
+});
+
 
 // Exports
 module.exports = router
